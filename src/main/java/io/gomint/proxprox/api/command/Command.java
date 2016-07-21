@@ -35,7 +35,7 @@ public abstract class Command {
     /**
      * Invoked when the command should be executed
      *
-     * @param sender The commandsender which executed the command
+     * @param sender The command sender which executed the command
      * @param args   Possible arguments for the command
      */
     public abstract void execute( CommandSender sender, String[] args );

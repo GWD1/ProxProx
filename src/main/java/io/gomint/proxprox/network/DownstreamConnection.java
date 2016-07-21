@@ -105,7 +105,11 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                         return;
                     }
 
-                    handlePacket( buffer, false );
+                    if ( !handlePacket( buffer, false ) ) {
+                        if ( upstreamConnection != null ) {
+                            upstreamConnection.send( data );
+                        }
+                    }
                 }
             }
         } );
@@ -113,7 +117,7 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     }
 
     @Override
-    protected void handlePacket( PacketBuffer buffer, boolean batched ) {
+    protected boolean handlePacket( PacketBuffer buffer, boolean batched ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
         if ( packetId == (byte) 0xfe && buffer.getRemaining() > 0 ) {
@@ -124,7 +128,7 @@ public class DownstreamConnection extends AbstractConnection implements Server {
         switch ( packetId ) {
             case Protocol.BATCH_PACKET:
                 handleBatchPacket( buffer, batched );
-                break;
+                return true;
             case Protocol.PLAY_STATUS_PACKET:
                 PacketPlayState packetPlayState = new PacketPlayState();
                 packetPlayState.deserialize( buffer );
@@ -133,11 +137,9 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS ) {
                     state = ConnectionState.CONNECTED;
                 }
-
-                break;
+                return true;
             default:
-                // Everything else can go through to the client
-                upstreamConnection.send( buffer.getBuffer() );
+                return false;
         }
     }
 

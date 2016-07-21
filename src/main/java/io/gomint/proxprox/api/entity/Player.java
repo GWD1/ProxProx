@@ -7,17 +7,22 @@
 
 package io.gomint.proxprox.api.entity;
 
+import io.gomint.proxprox.api.command.CommandSender;
+
 import java.util.UUID;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
-public interface Player {
+public interface Player extends CommandSender {
 
     UUID getUUID();
+
     String getName();
+
     Server getServer();
+
     void connect( String ip, int port );
 
 }

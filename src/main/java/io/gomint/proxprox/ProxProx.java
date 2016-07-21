@@ -9,6 +9,7 @@ package io.gomint.proxprox;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.ServerSocket;
+import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.config.ProxyConfig;
@@ -45,6 +46,10 @@ public class ProxProx implements Proxy {
      * Only for {@link Proxy#getInstance()}. DO NOT USE IN PLUGINS!
      */
     public static ProxProx instance;
+    /**
+     * Chat prefix for internal Command usage
+     */
+    public static final String PROX_PREFIX = ChatColor.GRAY + "[" + ChatColor.GREEN + "Prox" + ChatColor.DARK_GREEN + "Prox" + ChatColor.GRAY + "] ";
     private static final Logger logger = LoggerFactory.getLogger( ProxProx.class );
     private ProxyConfig config;
 

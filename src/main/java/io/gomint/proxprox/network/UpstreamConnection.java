@@ -11,18 +11,18 @@ import io.gomint.jraknet.Connection;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
 import io.gomint.proxprox.ProxProx;
+import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.data.ServerDataHolder;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.entity.Server;
+import io.gomint.proxprox.api.event.PermissionCheckEvent;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
-import io.gomint.proxprox.network.protocol.Packet;
-import io.gomint.proxprox.network.protocol.PacketDisconnect;
-import io.gomint.proxprox.network.protocol.PacketLogin;
-import io.gomint.proxprox.network.protocol.PacketPlayState;
+import io.gomint.proxprox.network.protocol.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -79,22 +79,18 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         continue;
                     }
 
-                    // We have a cached login Packet
-                    if ( state == ConnectionState.CONNECTED ) {
-                        if ( currentDownStream != null ) {
-                            currentDownStream.send( data );
-                        }
-
-                        continue;
-                    }
-
                     PacketBuffer buffer = new PacketBuffer( data, 0 );
                     if ( buffer.getRemaining() <= 0 ) {
                         // Malformed packet:
                         return;
                     }
 
-                    handlePacket( buffer, false );
+                    // Do we want to handle it?
+                    if ( !handlePacket( buffer, false ) ) {
+                        if ( currentDownStream != null ) {
+                            currentDownStream.send( data );
+                        }
+                    }
                 }
             }
         } );
@@ -102,10 +98,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     @Override
-    protected void handlePacket( PacketBuffer buffer, boolean batched ) {
+    protected boolean handlePacket( PacketBuffer buffer, boolean batched ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
-        if ( packetId == (byte) 0xfe && buffer.getRemaining() > 0 ) {
+        if ( packetId == (byte) 0xFE && buffer.getRemaining() > 0 ) {
             packetId = buffer.readByte();
         }
 
@@ -113,10 +109,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         switch ( packetId ) {
             case Protocol.BATCH_PACKET:
                 // The first batch should include the login packet
-                this.loginPacket = new PacketBuffer( buffer.getBuffer(), 0 );
+                if ( this.loginPacket == null ) {
+                    this.loginPacket = new PacketBuffer( buffer.getBuffer(), 0 );
+                }
 
                 handleBatchPacket( buffer, batched );
-                break;
+                return true;
+
             case Protocol.LOGIN_PACKET:
                 // Parse the login packet
                 PacketLogin loginPacket = new PacketLogin();
@@ -131,7 +130,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 PlayerLoginEvent event = this.proxProx.getPluginManager().callEvent( new PlayerLoginEvent( this ) );
                 if ( event.isCancelled() ) {
                     disconnect( event.getDisconnectReason() );
-                    return;
+                    return true;
                 }
 
                 logger.info( "Logged in as " + loginPacket.getUserName() + " (UUID: " + loginPacket.getUUID().toString() + ")" );
@@ -140,12 +139,29 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.proxProx.addPlayer( this );
 
                 // Connect to the default Server
-
                 this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
+                return true;
 
-                break;
+            case Protocol.TEXT_PACKET:
+                if ( this.state != ConnectionState.CONNECTED ) {
+                    disconnect( ChatColor.RED + "Error in handshake" );
+                    return true;
+                }
+
+                // Parse the chat packet
+                PacketText packetText = new PacketText();
+                packetText.deserialize( buffer );
+
+                // We only care for commands currently
+                // TODO: Add some sort of general chat event
+                if ( packetText.getType() == PacketText.Type.PLAYER_CHAT && packetText.getMessage().startsWith( "/" ) ) {
+                    return this.proxProx.getPluginManager().dispatchCommand( this, packetText.getMessage().substring( 1 ) );
+                } else {
+                    return false;
+                }
+
             default:
-                logger.info( "Unknown packet ID in handshake: " + Integer.toHexString( packetId & 0xFF ) );
+                return false;
         }
     }
 
@@ -258,6 +274,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         return pendingDownStream;
     }
 
+    // ---------- Player API --------------- //
+
     @Override
     public UUID getUUID() {
         return this.uuid;
@@ -266,6 +284,39 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Override
     public String getName() {
         return this.username;
+    }
+
+    // ----------- CommandSender API -------------- //
+
+    @Override
+    public void sendMessage( String... messages ) {
+        for ( String message : messages ) {
+            PacketText text = new PacketText();
+            text.setType( PacketText.Type.CLIENT_MESSAGE );
+            text.setMessage( message );
+            this.send( text );
+        }
+    }
+
+    @Override
+    public boolean hasPermission( String permission ) {
+        PermissionCheckEvent permissionCheckEvent = this.proxProx.getPluginManager().callEvent( new PermissionCheckEvent( this, permission ) );
+        return permissionCheckEvent.isResult();
+    }
+
+    @Override
+    public String getColor() {
+        return ChatColor.AQUA;
+    }
+
+    @Override
+    public String getPrefix() {
+        return "YO MAMA";
+    }
+
+    @Override
+    public Locale getLocale() {
+        return Locale.ENGLISH;
     }
 
     @Override

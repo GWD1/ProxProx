@@ -16,8 +16,6 @@ import io.gomint.proxprox.network.Protocol;
  */
 public class PacketPlayState extends Packet {
 
-
-
 	/**
 	 * Enumeration of play states observed to be sent inside certain packets.
 	 */

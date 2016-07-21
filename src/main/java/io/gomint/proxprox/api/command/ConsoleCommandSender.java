@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox.api.command;
 
+import io.gomint.proxprox.api.ChatColor;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ public class ConsoleCommandSender implements CommandSender {
     @Override
     public void sendMessage( String... messages ) {
         for ( String message : messages ) {
-            logger.info( message );
+            logger.info( ChatColor.toANSI( message ) );
         }
     }
 
@@ -52,21 +53,6 @@ public class ConsoleCommandSender implements CommandSender {
     @Override
     public Locale getLocale() {
         return Locale.US;
-    }
-
-    @Override
-    public long getLastCommandTime() {
-        return 0;
-    }
-
-    @Override
-    public void increaseCommandIssues( String command ) {
-
-    }
-
-    @Override
-    public void resetCommandIssues() {
-
     }
 
 }

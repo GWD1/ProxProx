@@ -33,4 +33,9 @@ public class Protocol {
      */
     public static final byte BATCH_PACKET = (byte) 0x06;
 
+    /**
+     * Packet ID for Text messages
+     */
+    public static final byte TEXT_PACKET = (byte) 0x07;
+
 }

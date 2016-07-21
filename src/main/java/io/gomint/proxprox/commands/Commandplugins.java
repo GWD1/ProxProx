@@ -8,6 +8,8 @@
 package io.gomint.proxprox.commands;
 
 
+import io.gomint.proxprox.ProxProx;
+import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.Command;
 import io.gomint.proxprox.api.command.CommandSender;
 import io.gomint.proxprox.api.plugin.Plugin;
@@ -36,10 +38,10 @@ public class Commandplugins extends Command {
     @Override
     public void execute( CommandSender sender, String[] args ) {
         Collection<Plugin> plugins = pluginManager.getPlugins();
-        sender.sendMessage( "Plugins (" + plugins.size() + ")" );
+        sender.sendMessage( ProxProx.PROX_PREFIX + ChatColor.RED + "Plugins (" + ChatColor.YELLOW + plugins.size() + ChatColor.RED + ")" );
 
         for ( Plugin plugin : plugins ) {
-            sender.sendMessage( " - " + plugin.getMeta().getName() + " version " + plugin.getMeta().getVersion() );
+            sender.sendMessage( ProxProx.PROX_PREFIX + ChatColor.RED + " - " + ChatColor.GREEN + plugin.getMeta().getName() + ChatColor.RED + " version " + ChatColor.YELLOW + plugin.getMeta().getVersion() );
         }
     }
 

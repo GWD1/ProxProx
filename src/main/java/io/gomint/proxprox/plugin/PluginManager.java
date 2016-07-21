@@ -22,7 +22,6 @@ import io.gomint.proxprox.scheduler.CoreScheduler;
 import io.gomint.proxprox.scheduler.PluginScheduler;
 import io.gomint.proxprox.util.CallerDetectorUtil;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,7 +30,6 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
@@ -121,12 +119,6 @@ public class PluginManager implements io.gomint.proxprox.api.plugin.PluginManage
      * @return whether the command was handled
      */
     public boolean dispatchCommand( CommandSender sender, String commandLine ) {
-        if ( System.currentTimeMillis() - sender.getLastCommandTime() < TimeUnit.SECONDS.toMillis( 5 ) ) {
-            sender.increaseCommandIssues( commandLine );
-        } else {
-            sender.resetCommandIssues();
-        }
-
         String[] split = COMMAND_ARGS_SPLIT.split( commandLine );
 
         // Check for chat that only contains " "

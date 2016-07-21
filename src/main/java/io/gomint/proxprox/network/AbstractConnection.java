@@ -42,7 +42,7 @@ public abstract class AbstractConnection {
      * Handles compressed batch packets directly by decoding their payload.
      *
      * @param buffer The buffer containing the batch packet's data (except packet ID)
-     * @param batch This boolean indicated if the buffer is coming out of a batched packet or not
+     * @param batch  This boolean indicated if the buffer is coming out of a batched packet or not
      */
     protected void handleBatchPacket( PacketBuffer buffer, boolean batch ) {
         if ( batch ) {
@@ -75,21 +75,18 @@ public abstract class AbstractConnection {
             int expectedPosition = payloadBuffer.getPosition() + packetLength;
 
             handlePacket( payloadBuffer, true );
-
-            if ( payloadBuffer.getPosition() != expectedPosition ) {
-                logger.error( "Malformed batch packet payload: Could not read enclosed packet data correctly" );
-                return;
-            }
+            payloadBuffer.skip( expectedPosition - payloadBuffer.getPosition() );
         }
     }
 
     /**
      * Little internal handler for packets
      *
-     * @param buffer    The buffer which holds the packet
-     * @param batched   Boolean indicating if buffer is coming out of a batched packet
+     * @param buffer  The buffer which holds the packet
+     * @param batched Boolean indicating if buffer is coming out of a batched packet
+     * @return false when we want to send it to the downstream, true if we consume it
      */
-    protected abstract void handlePacket( PacketBuffer buffer, boolean batched );
+    protected abstract boolean handlePacket( PacketBuffer buffer, boolean batched );
 
     protected enum ConnectionState {
         HANDSHAKE,

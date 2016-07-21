@@ -14,13 +14,17 @@ import java.util.Locale;
  * @version 1.0
  */
 public interface CommandSender {
+
     void sendMessage( String... messages );
+
     String getName();
+
     boolean hasPermission( String permission );
+
     String getColor();
+
     String getPrefix();
+
     Locale getLocale();
-    long getLastCommandTime();
-    void increaseCommandIssues( String command );
-    void resetCommandIssues();
+
 }
