@@ -158,7 +158,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     public void connect( String ip, int port ) {
         // Event first
         PlayerSwitchEvent switchEvent = this.proxProx.getPluginManager().callEvent( new PlayerSwitchEvent( this, this.currentDownStream, new ServerDataHolder( ip, port ) ) );
-        this.connect( switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
 
         // Check if we have a pending connection
         if ( this.pendingDownStream != null ) {
