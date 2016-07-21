@@ -64,6 +64,10 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                         DownstreamConnection.this.setup();
                         DownstreamConnection.this.upstreamConnection.onDownSteamConnected( DownstreamConnection.this );
                         break;
+
+                    case CONNECTION_CLOSED:
+                    case CONNECTION_DISCONNECTED:
+                        logger.info( "Disconnected downstream..." );
                 }
             }
         } );
@@ -114,6 +118,13 @@ public class DownstreamConnection extends AbstractConnection implements Server {
             }
         } );
         this.connectionReadThread.start();
+    }
+
+    @Override
+    protected void announceRewrite( byte[] buffer ) {
+        if ( upstreamConnection != null ) {
+            upstreamConnection.send( buffer );
+        }
     }
 
     @Override

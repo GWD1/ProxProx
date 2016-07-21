@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -74,10 +75,23 @@ public abstract class AbstractConnection {
             int packetLength = payloadBuffer.readInt();
             int expectedPosition = payloadBuffer.getPosition() + packetLength;
 
-            handlePacket( payloadBuffer, true );
+            if ( !handlePacket( payloadBuffer, true ) ) {
+                byte[] resend = new byte[packetLength + 1];
+                resend[0] = (byte) 0xFE;
+                System.arraycopy( payloadBuffer.getBuffer(), 4, resend, 1, packetLength );
+                announceRewrite( resend );
+            }
+
             payloadBuffer.skip( expectedPosition - payloadBuffer.getPosition() );
         }
     }
+
+    /**
+     * If the internal batch packet wants to redirect inner packets
+     *
+     * @param buffer The packet which should be redirected
+     */
+    protected abstract void announceRewrite( byte[] buffer );
 
     /**
      * Little internal handler for packets

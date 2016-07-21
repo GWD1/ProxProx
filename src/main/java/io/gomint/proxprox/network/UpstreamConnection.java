@@ -98,6 +98,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     @Override
+    protected void announceRewrite( byte[] buffer ) {
+        if ( currentDownStream != null ) {
+            currentDownStream.send( buffer );
+        }
+    }
+
+    @Override
     protected boolean handlePacket( PacketBuffer buffer, boolean batched ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
