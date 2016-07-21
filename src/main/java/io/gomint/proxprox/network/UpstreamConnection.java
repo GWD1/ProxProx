@@ -49,6 +49,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private UUID uuid;
     private String username;
 
+    // Last known good server
+    private ServerDataHolder lastKnownServer;
+
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
      *
@@ -219,6 +222,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         this.currentDownStream = downstreamConnection;
+        this.lastKnownServer = new ServerDataHolder( downstreamConnection.getIP(), downstreamConnection.getPort() );
     }
 
     /**
@@ -331,4 +335,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         return this.currentDownStream;
     }
 
+    public boolean connectToLastKnown() {
+        if ( this.lastKnownServer != null ) {
+            this.connect( this.lastKnownServer.getIP(), this.lastKnownServer.getPort() );
+            this.lastKnownServer = null;
+            return true;
+        }
+
+        return false;
+    }
 }

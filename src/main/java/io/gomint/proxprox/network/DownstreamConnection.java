@@ -11,6 +11,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.*;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
+import io.gomint.proxprox.network.protocol.PacketDisconnect;
 import io.gomint.proxprox.network.protocol.PacketLogin;
 import io.gomint.proxprox.network.protocol.PacketPlayState;
 import org.slf4j.Logger;
@@ -149,6 +150,15 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                     state = ConnectionState.CONNECTED;
                 }
                 return true;
+            case Protocol.DISONNECT_PACKET:
+                PacketDisconnect packetDisconnect = new PacketDisconnect();
+                packetDisconnect.deserialize( buffer );
+
+                if ( upstreamConnection.connectToLastKnown() ) {
+                    upstreamConnection.sendMessage( packetDisconnect.getMessage() );
+                }
+
+                return true;
             default:
                 return false;
         }
@@ -162,7 +172,9 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     }
 
     public void send( byte[] data ) {
-        this.connection.getConnection().send( data );
+        if ( this.connection.getConnection() != null ) {
+            this.connection.getConnection().send( data );
+        }
     }
 
     public void disconnect( String reason ) {
