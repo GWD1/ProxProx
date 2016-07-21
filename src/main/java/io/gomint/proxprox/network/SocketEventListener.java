@@ -25,7 +25,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  */
 public class SocketEventListener implements SocketEventHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger( SocketEventListener.class );
     private final Map<Long, UpstreamConnection> connections = new HashMap<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
@@ -69,6 +68,8 @@ public class SocketEventListener implements SocketEventHandler {
                     // First check if we already have a client like this
                     UpstreamConnection upstreamConnection = this.connections.remove( socket.getGuid() );
                     if ( upstreamConnection != null ) {
+                        this.proxProx.removePlayer( upstreamConnection );
+
                         if ( upstreamConnection.getPendingDownStream() != null ) {
                             upstreamConnection.getPendingDownStream().disconnect( socketEvent.getReason() );
                         }

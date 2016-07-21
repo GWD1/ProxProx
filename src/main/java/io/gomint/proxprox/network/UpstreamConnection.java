@@ -132,25 +132,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     return;
                 }
 
-
                 logger.info( "Logged in as " + loginPacket.getUserName() + " (UUID: " + loginPacket.getUUID().toString() + ")" );
                 this.state = ConnectionState.CONNECTED;
 
-                // Connect to default server
-                connect( "127.0.0.1", 19134 );
-
-                new Thread( new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            Thread.sleep( 30 * 1000 );
-                        } catch ( InterruptedException e ) {
-                            e.printStackTrace();
-                        }
-
-                        connect( "127.0.0.1", 19135 );
-                    }
-                } ).start();
+                this.proxProx.addPlayer( this );
 
                 break;
             default:

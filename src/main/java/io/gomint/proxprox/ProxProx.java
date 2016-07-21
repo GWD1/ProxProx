@@ -10,8 +10,10 @@ package io.gomint.proxprox;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.ServerSocket;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
+import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.config.ProxyConfig;
 import io.gomint.proxprox.network.SocketEventListener;
+import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
 import io.gomint.proxprox.scheduler.SyncTaskManager;
 import io.gomint.proxprox.commands.*;
@@ -24,6 +26,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.SocketException;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,8 +39,12 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author geNAZt
  * @version 1.0
  */
-public class ProxProx {
+public class ProxProx implements Proxy {
 
+    /**
+     * Only for {@link Proxy#getInstance()}. DO NOT USE IN PLUGINS!
+     */
+    public static ProxProx instance;
     private static final Logger logger = LoggerFactory.getLogger( ProxProx.class );
     private ProxyConfig config;
 
@@ -58,6 +66,9 @@ public class ProxProx {
     // Plugins
     @Getter private PluginManager pluginManager;
 
+    // Player maps
+    private Map<UUID, UpstreamConnection> players = new ConcurrentHashMap<>();
+
     /**
      * Entrypoint to ProxProx. This should be only called from the Bootstrap so we can
      * be sure we have all Libs loaded which we need.
@@ -65,6 +76,8 @@ public class ProxProx {
      * @param args optional arguments given via CLI arguments
      */
     public ProxProx( String[] args ) {
+        ProxProx.instance = this;
+
         logger.info( "Starting ProxProx v1.0.0" );
 
         // ------------------------------------ //
@@ -259,6 +272,20 @@ public class ProxProx {
 
         // Shut down
         this.running.set( false );
+    }
+
+    @Override
+    public Player getPlayer( UUID uuid ) {
+        return this.players.get( uuid );
+    }
+
+    // ---------- Internal Player ADD / REMOVE -------------- //
+    public void addPlayer( UpstreamConnection upstreamConnection ) {
+        this.players.put( upstreamConnection.getUUID(), upstreamConnection );
+    }
+
+    public void removePlayer( UpstreamConnection upstreamConnection ) {
+        this.players.remove( upstreamConnection.getUUID() );
     }
 
 }
