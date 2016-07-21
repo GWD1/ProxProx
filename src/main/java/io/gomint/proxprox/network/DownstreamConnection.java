@@ -155,9 +155,11 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     }
 
     public void disconnect( String reason ) {
-        logger.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
+        if ( this.connection.getConnection() != null ) {
+            logger.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
-        this.connection.getConnection().disconnect( reason );
+            this.connection.getConnection().disconnect( reason );
+        }
     }
 
     @Override
