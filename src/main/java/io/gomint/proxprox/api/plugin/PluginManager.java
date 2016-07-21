@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox.api.plugin;
 
+import io.gomint.proxprox.api.command.Command;
 import io.gomint.proxprox.api.plugin.event.Listener;
 
 /**
@@ -39,4 +40,5 @@ public interface PluginManager {
      */
     void registerListener( Plugin plugin, Listener listener );
 
+    void registerCommand( Plugin plugin, Command command );
 }

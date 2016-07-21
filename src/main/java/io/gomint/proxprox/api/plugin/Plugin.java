@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox.api.plugin;
 
+import io.gomint.proxprox.api.command.Command;
 import io.gomint.proxprox.api.plugin.event.Listener;
 import io.gomint.proxprox.api.scheduler.Scheduler;
 import lombok.Getter;
@@ -110,6 +111,10 @@ public class Plugin {
 
     public void registerListener( Listener listener ) {
         getPluginManager().registerListener( this, listener );
+    }
+
+    public void registerCommand( Command command ) {
+        getPluginManager().registerCommand( this, command );
     }
 
     /**
