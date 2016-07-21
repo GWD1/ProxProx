@@ -288,4 +288,13 @@ public class ProxProx implements Proxy {
         this.players.remove( upstreamConnection.getUUID() );
     }
 
+
+    /**
+     * Get the config for this Proxy
+     *
+     * @return Config object
+     */
+    public ProxyConfig getConfig() {
+        return config;
+    }
 }

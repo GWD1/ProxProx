@@ -11,9 +11,11 @@ import io.gomint.jraknet.Connection;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
 import io.gomint.proxprox.ProxProx;
+import io.gomint.proxprox.api.data.ServerDataHolder;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
+import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.network.protocol.Packet;
 import io.gomint.proxprox.network.protocol.PacketDisconnect;
 import io.gomint.proxprox.network.protocol.PacketLogin;
@@ -137,6 +139,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
                 this.proxProx.addPlayer( this );
 
+                // Connect to the default Server
+
+                this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
+
                 break;
             default:
                 logger.info( "Unknown packet ID in handshake: " + Integer.toHexString( packetId & 0xFF ) );
@@ -150,6 +156,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @param port  The port of the server
      */
     public void connect( String ip, int port ) {
+        // Event first
+        PlayerSwitchEvent switchEvent = this.proxProx.getPluginManager().callEvent( new PlayerSwitchEvent( this, this.currentDownStream, new ServerDataHolder( ip, port ) ) );
+        this.connect( switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
+
         // Check if we have a pending connection
         if ( this.pendingDownStream != null ) {
             // Disconnect
@@ -157,7 +167,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             this.pendingDownStream = null;
         }
 
-        this.pendingDownStream = new DownstreamConnection( this.proxProx, this, ip, port );
+        this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
     }
 
     /**

@@ -15,8 +15,10 @@ import com.blackypaw.simpleconfig.SimpleConfig;
  */
 public class ProxyConfig extends SimpleConfig {
 
-    private String ip;
-    private int port;
+    private String ip = "0.0.0.0";
+    private int port = 19132;
+
+    private ServerConfig defaultServer = new ServerConfig( "127.0.0.1", 19134 );
 
     /**
      * Get the IP which should be used to bind to for incoming Upstream (User) Connections
@@ -52,6 +54,15 @@ public class ProxyConfig extends SimpleConfig {
      */
     public void setPort( int port ) {
         this.port = port;
+    }
+
+    /**
+     * Get the config for the default server
+     *
+     * @return IP and Port to connect to the default server
+     */
+    public ServerConfig getDefaultServer() {
+        return this.defaultServer;
     }
 
 }
