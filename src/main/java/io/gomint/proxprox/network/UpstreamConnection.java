@@ -17,6 +17,7 @@ import io.gomint.proxprox.api.data.ServerDataHolder;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PermissionCheckEvent;
+import io.gomint.proxprox.api.event.PlayerLoggedinEvent;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.network.protocol.*;
@@ -50,6 +51,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
+    private boolean firstServer = true;
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
@@ -393,6 +395,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         // Take over new downstream
         downstreamConnection.sendInit();
+
+        // Send Loggedin Event on first downstram connect
+        if ( this.firstServer ) {
+            this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
+            this.firstServer = false;
+        }
+
         this.currentDownStream = downstreamConnection;
     }
 
