@@ -1,5 +1,5 @@
 # jRaknet
-https://dl.gomint.io/jraknet-2.3.0-0.15.2.jar
+https://dl.gomint.io/jraknet-3.0.1-0.15.2.jar
 
 # SLF4J + LOG4J2 Binding
 https://dl.gomint.io/slf4j-api-1.7.13.jar
@@ -15,3 +15,6 @@ https://dl.gomint.io/guava-19.0.jar
 
 # Javassist
 https://dl.gomint.io/javassist-3.20.0-GA.jar
+
+# JSON Simple
+https://dl.gomint.io/json-simple-1.1.1.jar

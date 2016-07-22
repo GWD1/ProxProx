@@ -38,4 +38,34 @@ public class Protocol {
      */
     public static final byte TEXT_PACKET = (byte) 0x07;
 
+    /**
+     * Packet ID for Player movement
+     */
+    public static final byte MOVE_PLAYER_PACKET = (byte) 0x10;
+
+    /**
+     * Packet ID for Player Add
+     */
+    public static final byte ADD_PLAYER_PACKET = (byte) 0x0a;
+
+    /**
+     * Packet ID for Entity Add
+     */
+    public static final byte ADD_ENTITY_PACKET = (byte) 0x0b;
+
+    /**
+     * Packet ID for Entity Remove
+     */
+    public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0c;
+
+    /**
+     * Packet ID for Chunk data
+     */
+    public static final byte CHUNK_DATA_PACKET = (byte) 0x34;
+
+    /**
+     * Packet ID for Dimension change
+     */
+    public static final byte CHANGE_DIMENSION_PACKET = (byte) 0x36;
+
 }

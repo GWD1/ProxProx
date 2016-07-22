@@ -8,6 +8,7 @@
 package io.gomint.proxprox.network;
 
 import io.gomint.jraknet.Connection;
+import io.gomint.jraknet.EncapsulatedPacket;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
 import io.gomint.proxprox.ProxProx;
@@ -24,7 +25,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 /**
  * @author geNAZt
@@ -43,7 +43,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Downstream
     private DownstreamConnection currentDownStream;
     private DownstreamConnection pendingDownStream;
-    private boolean firstSpawn = true;
 
     // User data
     private UUID uuid;
@@ -77,21 +76,21 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             @Override
             public void run() {
                 while ( connection.isConnected() ) {
-                    byte[] data = connection.receive( 1, TimeUnit.SECONDS );
+                    EncapsulatedPacket data = connection.poll();
                     if ( data == null ) {
                         continue;
                     }
 
-                    PacketBuffer buffer = new PacketBuffer( data, 0 );
+                    PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
                     if ( buffer.getRemaining() <= 0 ) {
                         // Malformed packet:
                         return;
                     }
 
                     // Do we want to handle it?
-                    if ( !handlePacket( buffer, false ) ) {
+                    if ( !handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false ) ) {
                         if ( currentDownStream != null ) {
-                            currentDownStream.send( data );
+                            currentDownStream.getConnection().send( data.getReliability(), data.getOrderingChannel(), data.getPacketData() );
                         }
                     }
                 }
@@ -101,14 +100,18 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     @Override
-    protected void announceRewrite( byte[] buffer ) {
-        if ( currentDownStream != null ) {
-            currentDownStream.send( buffer );
+    protected void announceRewrite( PacketReliability reliability, int orderingChannel, PacketBatch packet ) {
+        if ( currentDownStream != null && currentDownStream.getConnection() != null ) {
+            PacketBuffer buffer = new PacketBuffer( packet.estimateLength() == -1 ? 64 : packet.estimateLength() + 2 );
+            buffer.writeByte( (byte) 0xFE );
+            buffer.writeByte( packet.getId() );
+            packet.serialize( buffer );
+            currentDownStream.getConnection().send( reliability, orderingChannel, buffer.getBuffer() );
         }
     }
 
     @Override
-    protected boolean handlePacket( PacketBuffer buffer, boolean batched ) {
+    protected boolean handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
         if ( packetId == (byte) 0xFE && buffer.getRemaining() > 0 ) {
@@ -123,7 +126,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     this.loginPacket = new PacketBuffer( buffer.getBuffer(), 0 );
                 }
 
-                handleBatchPacket( buffer, batched );
+                handleBatchPacket( buffer, reliability, orderingChannel, batched );
                 return true;
 
             case Protocol.LOGIN_PACKET:
@@ -178,8 +181,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     /**
      * Connect to a new DownStream server
      *
-     * @param ip    The ip of the server
-     * @param port  The port of the server
+     * @param ip   The ip of the server
+     * @param port The port of the server
      */
     public void connect( String ip, int port ) {
         // Event first
@@ -201,37 +204,57 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @param downstreamConnection The downstream which connected
      */
     void onDownSteamConnected( DownstreamConnection downstreamConnection ) {
-        // Send login packet
-        downstreamConnection.send( this.loginPacket.getBuffer() );
-
-        // When this is first spawn send state
-        if ( this.firstSpawn ) {
-            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
-            this.firstSpawn = false;
-        } else {
-            // TODO: Maybe send some sort of dimension change?
-            // send( new PacketDimensionChange() );
-        }
-
-        // Clean up pending
-        this.pendingDownStream = null;
-
         // Close old connection and store new one
         if ( this.currentDownStream != null ) {
+            this.lastKnownServer = new ServerDataHolder( this.currentDownStream.getIP(), this.currentDownStream.getPort() );
             this.currentDownStream.close();
+
+            // Cleanup all entities
+            for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
+                send( new PacketRemoveEntity( eID ) );
+            }
+
+            // Loading screen (holy did this take long to figure out :D)
+            send( new PacketChangeDimension( (byte) 0 ) );
+            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
+            send( new PacketChangeDimension( (byte) 1 ) );
+            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
+
+            move( 0, 4000, 0 );
+            sendEmptyChunks();
+
+            send( new PacketChangeDimension( (byte) 1 ) );
+            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
+            send( new PacketChangeDimension( (byte) 0 ) );
+            // There needs to be one additional spawn but the downstream server sends one so its ok
+
+            this.currentDownStream = null;
         }
 
-        this.currentDownStream = downstreamConnection;
-        this.lastKnownServer = new ServerDataHolder( downstreamConnection.getIP(), downstreamConnection.getPort() );
+        // Send login packet
+        downstreamConnection.send( this.loginPacket.getBuffer() );
     }
 
-    /**
-     * Send data to the user
-     *
-     * @param data The data which should be send
-     */
-    public void send( byte[] data ) {
-        this.connection.send( data );
+    private void sendEmptyChunks() {
+        for ( int x = -3; x < 3; x++ ) {
+            for ( int z = -3; z < 3; z++ ) {
+                PacketFullChunkData chunk = new PacketFullChunkData();
+                chunk.setChunkX( x );
+                chunk.setChunkZ( z );
+                chunk.setChunkData( new byte[0] );
+                send( chunk );
+            }
+        }
+    }
+
+    private void move( float x, float y, float z ) {
+        PacketMovePlayer packet = new PacketMovePlayer();
+        packet.setEntityId( 0 );
+        packet.setX( x );
+        packet.setY( y + 1.62f );
+        packet.setZ( z );
+        packet.setMode( (byte) 1 );
+        send( packet );
     }
 
     /**
@@ -244,7 +267,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         buffer.writeByte( (byte) 0xFE );
         buffer.writeByte( packet.getId() );
         packet.serialize( buffer );
-        this.connection.send( PacketReliability.RELIABLE, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
+        connection.send( PacketReliability.RELIABLE, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
     }
 
     /**
@@ -335,6 +358,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         return this.currentDownStream;
     }
 
+    /**
+     * Connect to last known server
+     *
+     * @return true when connecting, false when no server was found
+     */
     public boolean connectToLastKnown() {
         if ( this.lastKnownServer != null ) {
             this.connect( this.lastKnownServer.getIP(), this.lastKnownServer.getPort() );
@@ -344,4 +372,28 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         return false;
     }
+
+    /**
+     * Get the connection to the user
+     *
+     * @return The jRakNet Connection
+     */
+    public Connection getConnection() {
+        return connection;
+    }
+
+    /**
+     * Downstream is ready for the player to connect
+     *
+     * @param downstreamConnection The connection which we want to use
+     */
+    public void switchToDownstream( DownstreamConnection downstreamConnection ) {
+        // Clean up pending
+        this.pendingDownStream = null;
+
+        // Take over new downstream
+        downstreamConnection.sendInit();
+        this.currentDownStream = downstreamConnection;
+    }
+
 }

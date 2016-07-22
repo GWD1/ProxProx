@@ -11,19 +11,20 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.*;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
-import io.gomint.proxprox.network.protocol.PacketDisconnect;
-import io.gomint.proxprox.network.protocol.PacketLogin;
-import io.gomint.proxprox.network.protocol.PacketPlayState;
+import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
+import io.gomint.proxprox.network.protocol.*;
+import lombok.EqualsAndHashCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
+@EqualsAndHashCode( of = { "ip", "port" }, callSuper = false )
 public class DownstreamConnection extends AbstractConnection implements Server {
 
     private static final Logger logger = LoggerFactory.getLogger( DownstreamConnection.class );
@@ -42,17 +43,26 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     // Proxy instance
     private ProxProx proxProx;
 
+    // Entities
+    private Set<Long> spawnedEntities = new HashSet<>();
+
+    // Hold back
+    private List<CachedData> packets = new ArrayList<>();
+
     /**
      * Create a new AbstractConnection to a server.
      *
-     * @param proxProx The proxy instance
+     * @param proxProx           The proxy instance
      * @param upstreamConnection The upstream connection which requested to connect to this downstream
-     * @param ip   The ip of the server we want to connect to
-     * @param port The port of the server we want to connect to
+     * @param ip                 The ip of the server we want to connect to
+     * @param port               The port of the server we want to connect to
      */
     public DownstreamConnection( ProxProx proxProx, UpstreamConnection upstreamConnection, String ip, int port ) {
         this.upstreamConnection = upstreamConnection;
         this.proxProx = proxProx;
+
+        this.ip = ip;
+        this.port = port;
 
         this.connection = new ClientSocket();
         this.connection.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "jRaknet-downstream-%d" ).build() );
@@ -66,9 +76,14 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                         DownstreamConnection.this.upstreamConnection.onDownSteamConnected( DownstreamConnection.this );
                         break;
 
-                    case CONNECTION_CLOSED:
+                    //case CONNECTION_CLOSED:
                     case CONNECTION_DISCONNECTED:
                         logger.info( "Disconnected downstream..." );
+                        DownstreamConnection.this.close();
+                        break;
+
+                    default:
+                        break;
                 }
             }
         } );
@@ -90,29 +105,24 @@ public class DownstreamConnection extends AbstractConnection implements Server {
             @Override
             public void run() {
                 while ( connection.getConnection() != null && connection.getConnection().isConnected() ) {
-                    byte[] data = connection.getConnection().receive( 1, TimeUnit.SECONDS );
+                    EncapsulatedPacket data = connection.getConnection().poll();
                     if ( data == null ) {
                         continue;
                     }
 
-                    // We have a cached login Packet
-                    if ( state == ConnectionState.CONNECTED ) {
-                        if ( upstreamConnection != null ) {
-                            upstreamConnection.send( data );
-                        }
-
-                        continue;
-                    }
-
-                    PacketBuffer buffer = new PacketBuffer( data, 0 );
+                    PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
                     if ( buffer.getRemaining() <= 0 ) {
                         // Malformed packet:
                         return;
                     }
 
-                    if ( !handlePacket( buffer, false ) ) {
+                    if ( !handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false ) ) {
                         if ( upstreamConnection != null ) {
-                            upstreamConnection.send( data );
+                            if ( !DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                packets.add( new CachedData( data.getReliability(), data.getPacketData(), data.getOrderingChannel() ) );
+                            } else {
+                                upstreamConnection.getConnection().send( data.getReliability(), data.getOrderingChannel(), data.getPacketData() );
+                            }
                         }
                     }
                 }
@@ -122,43 +132,73 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     }
 
     @Override
-    protected void announceRewrite( byte[] buffer ) {
+    protected void announceRewrite( PacketReliability reliability, int orderingChannel, PacketBatch packet) {
         if ( upstreamConnection != null ) {
-            upstreamConnection.send( buffer );
+            PacketBuffer buffer = new PacketBuffer( packet.estimateLength() == -1 ? 64 : packet.estimateLength() + 2 );
+            buffer.writeByte( (byte) 0xFE );
+            buffer.writeByte( packet.getId() );
+            packet.serialize( buffer );
+
+            if ( !DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                packets.add( new CachedData( reliability, buffer.getBuffer(), orderingChannel ) );
+            } else {
+                upstreamConnection.getConnection().send( reliability, orderingChannel, buffer.getBuffer() );
+            }
         }
     }
 
     @Override
-    protected boolean handlePacket( PacketBuffer buffer, boolean batched ) {
+    protected boolean handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
-        if ( packetId == (byte) 0xfe && buffer.getRemaining() > 0 ) {
+        if ( packetId == (byte) 0xFE && buffer.getRemaining() > 0 ) {
             packetId = buffer.readByte();
         }
 
         // Minimalistic protocol
         switch ( packetId ) {
-            case Protocol.BATCH_PACKET:
-                handleBatchPacket( buffer, batched );
-                return true;
+            case Protocol.ADD_ENTITY_PACKET:
+                PacketAddEntity packetAddEntity = new PacketAddEntity();
+                packetAddEntity.deserialize( buffer );
+
+                spawnedEntities.add( packetAddEntity.getEntityId() );
+                return false;
+
+            case Protocol.ADD_PLAYER_PACKET:
+                PacketAddPlayer packetAddPlayer  = new PacketAddPlayer();
+                packetAddPlayer.deserialize( buffer );
+
+                spawnedEntities.add( packetAddPlayer.getEntityId() );
+                return false;
+
             case Protocol.PLAY_STATUS_PACKET:
                 PacketPlayState packetPlayState = new PacketPlayState();
                 packetPlayState.deserialize( buffer );
 
                 // We have been logged in. But we miss a spawn packet
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS ) {
+                    logger.info( "Connected to downstream for " + this.upstreamConnection.getName() );
                     state = ConnectionState.CONNECTED;
                 }
+
+                // The first spawn state must come through
+                if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN ) {
+                    this.upstreamConnection.switchToDownstream( this );
+                    this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
+                    return false;
+                }
+
                 return true;
             case Protocol.DISONNECT_PACKET:
                 PacketDisconnect packetDisconnect = new PacketDisconnect();
                 packetDisconnect.deserialize( buffer );
 
-                if ( upstreamConnection.connectToLastKnown() ) {
+                if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
                     upstreamConnection.sendMessage( packetDisconnect.getMessage() );
                 }
 
                 return true;
+
             default:
                 return false;
         }
@@ -169,11 +209,12 @@ public class DownstreamConnection extends AbstractConnection implements Server {
      */
     public void close() {
         this.connection.close();
+        this.connectionReadThread.interrupt();
     }
 
     public void send( byte[] data ) {
-        if ( this.connection.getConnection() != null ) {
-            this.connection.getConnection().send( data );
+        if ( connection.getConnection() != null ) {
+            connection.getConnection().send( data );
         }
     }
 
@@ -193,6 +234,37 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     @Override
     public int getPort() {
         return this.port;
+    }
+
+    /**
+     * Get the connection to the server
+     *
+     * @return The connection to the server
+     */
+    public Connection getConnection() {
+        return connection.getConnection();
+    }
+
+    /**
+     * Return a collection of all currently spawned entities
+     *
+     * @return
+     */
+    public Set<Long> getSpawnedEntities() {
+        return spawnedEntities;
+    }
+
+    /**
+     * Send all cached packets since we are ready for it now
+     */
+    public void sendInit() {
+        for ( CachedData packet : packets ) {
+            if ( upstreamConnection != null ) {
+                upstreamConnection.getConnection().send( packet.getReliability(), packet.getOrderingChannel(), packet.getData() );
+            }
+        }
+
+        packets.clear();
     }
 
 }

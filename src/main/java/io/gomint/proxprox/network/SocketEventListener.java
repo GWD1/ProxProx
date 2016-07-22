@@ -11,8 +11,6 @@ import io.gomint.jraknet.Socket;
 import io.gomint.jraknet.SocketEvent;
 import io.gomint.jraknet.SocketEventHandler;
 import io.gomint.proxprox.ProxProx;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -47,7 +45,7 @@ public class SocketEventListener implements SocketEventHandler {
                 this.lock.writeLock().lock();
                 try {
                     // First check if we already have a client like this
-                    UpstreamConnection upstreamConnection = this.connections.get( socket.getGuid() );
+                    UpstreamConnection upstreamConnection = this.connections.get( socketEvent.getConnection().getGuid() );
                     if ( upstreamConnection != null ) {
                         socketEvent.getConnection().disconnect( "Another connection is active on this GUID" );
                         return;
@@ -66,7 +64,7 @@ public class SocketEventListener implements SocketEventHandler {
                 this.lock.writeLock().lock();
                 try {
                     // First check if we already have a client like this
-                    UpstreamConnection upstreamConnection = this.connections.remove( socket.getGuid() );
+                    UpstreamConnection upstreamConnection = this.connections.remove( socketEvent.getConnection().getGuid() );
                     if ( upstreamConnection != null ) {
                         this.proxProx.removePlayer( upstreamConnection );
 
