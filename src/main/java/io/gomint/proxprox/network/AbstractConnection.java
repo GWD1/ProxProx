@@ -117,18 +117,6 @@ public abstract class AbstractConnection {
                 startByte = skipByte.getMax();
             }
 
-            // Dump new bytes
-            StringBuilder stringBuilder = new StringBuilder( "Dumping new Buffer: \n" );
-            int currentRow = 0;
-            for ( byte newbyte : newbytes ) {
-                stringBuilder.append( "0x" ).append( Integer.toHexString( newbyte & 0xFF ) );
-                if ( currentRow++ == 16 ) {
-                    stringBuilder.append( "\n" );
-                    currentRow = 0;
-                }
-            }
-            System.out.println( stringBuilder.toString() );
-
             // There is data to rebatch
             byte[] newBatchContent = batch( newbytes );
             PacketBatch packetBatch = new PacketBatch();
