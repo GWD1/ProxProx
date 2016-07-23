@@ -171,8 +171,8 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                 packetPlayState.deserialize( buffer );
 
                 // We have been logged in. But we miss a spawn packet
-                if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS ) {
-                    logger.info( "Connected to downstream for " + this.upstreamConnection.getName() );
+                if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && state != ConnectionState.CONNECTED ) {
+                    logger.info( "Connected to downstream (" + connection.getConnection().getGuid() + ") for " + this.upstreamConnection.getName() );
                     state = ConnectionState.CONNECTED;
                 }
 
