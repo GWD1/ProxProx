@@ -77,6 +77,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.connectionReadThread = this.proxProx.getNewClientConnectionThread( new Runnable() {
             @Override
             public void run() {
+                Thread.currentThread().setName( "UpStream unkown (" + connection.getGuid() + ") [Packet Read/Rewrite]" );
+
                 while ( connection.isConnected() ) {
                     EncapsulatedPacket data = connection.poll();
                     if ( data == null ) {
@@ -144,6 +146,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 }
 
                 logger.info( "Logged in as " + loginPacket.getUserName() + " (UUID: " + loginPacket.getUUID().toString() + ")" );
+                Thread.currentThread().setName( "UpStream " + getUUID() + " [Packet Read/Rewrite]" );
                 this.state = ConnectionState.CONNECTED;
 
                 this.proxProx.addPlayer( this );

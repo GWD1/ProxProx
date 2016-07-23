@@ -36,6 +36,7 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     // Client connection
     private ClientSocket connection;
     private Thread connectionReadThread;
+    private boolean manualClose = true;
 
     // Upstream
     private UpstreamConnection upstreamConnection;
@@ -65,10 +66,11 @@ public class DownstreamConnection extends AbstractConnection implements Server {
         this.port = port;
 
         this.connection = new ClientSocket();
-        this.connection.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "jRaknet-downstream-%d" ).build() );
+        this.connection.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "DownStream " + this.upstreamConnection.getUUID() + " -> " + this.ip + ":" + this.port ).build() );
         this.connection.setEventHandler( new SocketEventHandler() {
             @Override
             public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
+                logger.debug( "Got socketEvent: " + socketEvent.getType().name() );
                 switch ( socketEvent.getType() ) {
                     case CONNECTION_ATTEMPT_SUCCEEDED:
                         // We got accepted *yay*
@@ -79,6 +81,7 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                     //case CONNECTION_CLOSED:
                     case CONNECTION_DISCONNECTED:
                         logger.info( "Disconnected downstream..." );
+                        DownstreamConnection.this.manualClose = false;
                         DownstreamConnection.this.close();
                         break;
 
@@ -104,6 +107,9 @@ public class DownstreamConnection extends AbstractConnection implements Server {
         this.connectionReadThread = this.proxProx.getNewServerConnectionThread( new Runnable() {
             @Override
             public void run() {
+                // Give a better name
+                Thread.currentThread().setName( "DownStream " + upstreamConnection.getUUID() + " -> " + ip + ":" + port + " [Packet Read/Rewrite]" );
+
                 while ( connection.getConnection() != null && connection.getConnection().isConnected() ) {
                     EncapsulatedPacket data = connection.getConnection().poll();
                     if ( data == null ) {
@@ -203,6 +209,10 @@ public class DownstreamConnection extends AbstractConnection implements Server {
      * Close the connection to the underlying RakNet Server
      */
     public void close() {
+        if ( this.manualClose ) {
+            this.connection.close();
+        }
+
         this.connectionReadThread.interrupt();
     }
 
