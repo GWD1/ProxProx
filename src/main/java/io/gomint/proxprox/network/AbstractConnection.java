@@ -10,6 +10,7 @@ package io.gomint.proxprox.network;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
 import io.gomint.jraknet.datastructures.TriadRange;
+import io.gomint.proxprox.network.protocol.PacketBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +76,8 @@ public abstract class AbstractConnection {
         List<TriadRange> skipBytes = null;
         PacketBuffer payloadBuffer = new PacketBuffer( payload, 0 );
         while ( payloadBuffer.getRemaining() > 0 ) {
-            int packetLength = payloadBuffer.readInt();
             int beforePosition = payloadBuffer.getPosition();
+            int packetLength = payloadBuffer.readInt();
             int expectedPosition = payloadBuffer.getPosition() + packetLength;
 
             if ( handlePacket( payloadBuffer, reliability, orderingChannel, true ) ) {
@@ -101,6 +102,11 @@ public abstract class AbstractConnection {
                 skipped += skipByte.getMax() - skipByte.getMin();
             }
 
+            // Do we have data?
+            if ( skipped == payload.length ) {
+                return true;
+            }
+
             // New combined bytes
             byte[] newbytes = new byte[payload.length - skipped];
             int startByte = 0;
@@ -111,24 +117,29 @@ public abstract class AbstractConnection {
                 startByte = skipByte.getMax();
             }
 
+            // Dump new bytes
+            StringBuilder stringBuilder = new StringBuilder( "Dumping new Buffer: \n" );
+            int currentRow = 0;
+            for ( byte newbyte : newbytes ) {
+                stringBuilder.append( "0x" ).append( Integer.toHexString( newbyte & 0xFF ) );
+                if ( currentRow++ == 16 ) {
+                    stringBuilder.append( "\n" );
+                    currentRow = 0;
+                }
+            }
+            System.out.println( stringBuilder.toString() );
+
             // There is data to rebatch
             byte[] newBatchContent = batch( newbytes );
+            PacketBatch packetBatch = new PacketBatch();
+            packetBatch.setPayload( newBatchContent );
 
-            int contentLength = newBatchContent.length;
-            byte[] content = new byte[contentLength + 6];
-            content[0] = (byte) 0xFE;
-            content[1] = Protocol.BATCH_PACKET;
+            PacketBuffer packetBuffer = new PacketBuffer( packetBatch.estimateLength() + 2 );
+            packetBuffer.writeByte( (byte) 0xFE );
+            packetBuffer.writeByte( packetBatch.getId() );
+            packetBatch.serialize( buffer );
 
-            // Add batch length
-            content[2] = (byte) ( ( contentLength >> 24 ) & 0xFF );
-            content[3] = (byte) ( ( contentLength >> 16 ) & 0xFF );
-            content[4] = (byte) ( ( contentLength >> 8 ) & 0xFF );
-            content[5] = (byte) ( ( contentLength ) & 0xFF );
-
-            // Add batch content
-            System.arraycopy( newBatchContent, 0, content, 6, contentLength );
-
-            announceRewrite( reliability, orderingChannel, content );
+            announceRewrite( reliability, orderingChannel, buffer.getBuffer() );
             return true;
         }
     }
