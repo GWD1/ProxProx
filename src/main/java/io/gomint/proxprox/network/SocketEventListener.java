@@ -51,7 +51,7 @@ public class SocketEventListener implements SocketEventHandler {
                         return;
                     }
 
-                    this.connections.put( socket.getGuid(), new UpstreamConnection( this.proxProx, socketEvent.getConnection() ) );
+                    this.connections.put( socketEvent.getConnection().getGuid(), new UpstreamConnection( this.proxProx, socketEvent.getConnection() ) );
                 } finally {
                     this.lock.writeLock().unlock();
                 }
@@ -66,7 +66,9 @@ public class SocketEventListener implements SocketEventHandler {
                     // First check if we already have a client like this
                     UpstreamConnection upstreamConnection = this.connections.remove( socketEvent.getConnection().getGuid() );
                     if ( upstreamConnection != null ) {
-                        this.proxProx.removePlayer( upstreamConnection );
+                        if ( upstreamConnection.getUUID() != null ) {
+                            this.proxProx.removePlayer( upstreamConnection );
+                        }
 
                         if ( upstreamConnection.getPendingDownStream() != null ) {
                             upstreamConnection.getPendingDownStream().disconnect( socketEvent.getReason() );

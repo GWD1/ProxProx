@@ -132,17 +132,12 @@ public class DownstreamConnection extends AbstractConnection implements Server {
     }
 
     @Override
-    protected void announceRewrite( PacketReliability reliability, int orderingChannel, PacketBatch packet) {
+    protected void announceRewrite( PacketReliability reliability, int orderingChannel, byte[] packet ) {
         if ( upstreamConnection != null ) {
-            PacketBuffer buffer = new PacketBuffer( packet.estimateLength() == -1 ? 64 : packet.estimateLength() + 2 );
-            buffer.writeByte( (byte) 0xFE );
-            buffer.writeByte( packet.getId() );
-            packet.serialize( buffer );
-
             if ( !DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
-                packets.add( new CachedData( reliability, buffer.getBuffer(), orderingChannel ) );
+                packets.add( new CachedData( reliability, packet, orderingChannel ) );
             } else {
-                upstreamConnection.getConnection().send( reliability, orderingChannel, buffer.getBuffer() );
+                upstreamConnection.getConnection().send( reliability, orderingChannel, packet );
             }
         }
     }
@@ -208,7 +203,6 @@ public class DownstreamConnection extends AbstractConnection implements Server {
      * Close the connection to the underlying RakNet Server
      */
     public void close() {
-        this.connection.close();
         this.connectionReadThread.interrupt();
     }
 

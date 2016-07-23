@@ -9,16 +9,17 @@ package io.gomint.proxprox.network;
 
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
-import io.gomint.proxprox.network.protocol.PacketBatch;
+import io.gomint.jraknet.datastructures.TriadRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
-import java.util.zip.DataFormatException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.zip.Deflater;
-import java.util.zip.Inflater;
+import java.util.zip.InflaterInputStream;
 
 /**
  * @author geNAZt
@@ -45,71 +46,106 @@ public abstract class AbstractConnection {
      * @param orderingChannel The ordering channel of this batched packet
      * @param batch           This boolean indicated if the buffer is coming out of a batched packet or not
      */
-    protected void handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
+    protected boolean handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
         if ( batch ) {
             logger.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            return;
+            return true;
         }
 
-        buffer.skip( 4 );               // Compressed payload length (not of interest; only uncompressed size matters)
+        buffer.skip( 4 );              // Compressed payload length (not of interest; only uncompressed size matters)
 
-        Inflater inflater = new Inflater();
-        inflater.setInput( buffer.getBuffer(), buffer.getPosition(), buffer.getRemaining() );
+        InflaterInputStream inflaterInputStream = new InflaterInputStream( new ByteArrayInputStream( buffer.getBuffer(), buffer.getPosition(), buffer.getRemaining() ) );
 
         ByteArrayOutputStream bout = new ByteArrayOutputStream( buffer.getBuffer().length );
-        byte[] batchIntermediate = new byte[1024];
+        byte[] batchIntermediate = new byte[256];
 
         try {
-            while ( !inflater.finished() ) {
-                int read = inflater.inflate( batchIntermediate );
+            int read;
+            while ( ( read = inflaterInputStream.read( batchIntermediate ) ) > -1 ) {
                 bout.write( batchIntermediate, 0, read );
             }
-        } catch ( DataFormatException e ) {
+        } catch ( IOException e ) {
             logger.error( "Failed to decompress batch packet", e );
-            return;
+            return true;
         }
 
         byte[] payload = bout.toByteArray();
 
-        ByteBuffer newBytes = ByteBuffer.allocate( payload.length );
+        boolean changed = false;
+        List<TriadRange> skipBytes = null;
         PacketBuffer payloadBuffer = new PacketBuffer( payload, 0 );
         while ( payloadBuffer.getRemaining() > 0 ) {
             int packetLength = payloadBuffer.readInt();
             int beforePosition = payloadBuffer.getPosition();
             int expectedPosition = payloadBuffer.getPosition() + packetLength;
 
-            if ( !handlePacket( payloadBuffer, reliability, orderingChannel, true ) ) {
-                newBytes.putInt( packetLength );
-                byte[] chunkCopy = new byte[expectedPosition - beforePosition];
-                System.arraycopy( payload, beforePosition, chunkCopy, 0, expectedPosition - beforePosition );
-                newBytes.put( chunkCopy );
+            if ( handlePacket( payloadBuffer, reliability, orderingChannel, true ) ) {
+                if ( skipBytes == null ) {
+                    skipBytes = new ArrayList<>();
+                }
+
+                skipBytes.add( new TriadRange( beforePosition, expectedPosition ) );
+                changed = true;
             }
 
             payloadBuffer.skip( expectedPosition - payloadBuffer.getPosition() );
         }
 
-        if ( newBytes.position() > 0 ) {
+        // Do we need to rebatch?
+        if ( !changed ) {
+            return false;
+        } else {
+            // Check how many bytes we skipped
+            int skipped = 0;
+            for ( TriadRange skipByte : skipBytes ) {
+                skipped += skipByte.getMax() - skipByte.getMin();
+            }
+
+            // New combined bytes
+            byte[] newbytes = new byte[payload.length - skipped];
+            int startByte = 0;
+            int currentPos = 0;
+            for ( TriadRange skipByte : skipBytes ) {
+                System.arraycopy( payload, startByte, newbytes, currentPos, skipByte.getMin() - startByte );
+                currentPos += skipByte.getMin() - startByte;
+                startByte = skipByte.getMax();
+            }
+
             // There is data to rebatch
-            PacketBatch packetBatch = batch( Arrays.copyOf( newBytes.array(), newBytes.position() ) );
-            announceRewrite( reliability, orderingChannel, packetBatch );
+            byte[] newBatchContent = batch( newbytes );
+
+            int contentLength = newBatchContent.length;
+            byte[] content = new byte[contentLength + 6];
+            content[0] = (byte) 0xFE;
+            content[1] = Protocol.BATCH_PACKET;
+
+            // Add batch length
+            content[2] = (byte) ( ( contentLength >> 24 ) & 0xFF );
+            content[3] = (byte) ( ( contentLength >> 16 ) & 0xFF );
+            content[4] = (byte) ( ( contentLength >> 8 ) & 0xFF );
+            content[5] = (byte) ( ( contentLength ) & 0xFF );
+
+            // Add batch content
+            System.arraycopy( newBatchContent, 0, content, 6, contentLength );
+
+            announceRewrite( reliability, orderingChannel, content );
+            return true;
         }
     }
 
-    private PacketBatch batch( byte[] data ) {
+    private byte[] batch( byte[] data ) {
         Deflater deflater = new Deflater( 7 );
         deflater.setInput( data );
         deflater.finish();
 
-        ByteArrayOutputStream baos = new ByteArrayOutputStream( 256 );
-        byte[] intermediate = new byte[1024];
+        ByteArrayOutputStream baos = new ByteArrayOutputStream( data.length );
+        byte[] intermediate = new byte[256];
         while ( !deflater.finished() ) {
             int read = deflater.deflate( intermediate );
             baos.write( intermediate, 0, read );
         }
 
-        PacketBatch batch = new PacketBatch();
-        batch.setPayload( baos.toByteArray() );
-        return batch;
+        return baos.toByteArray();
     }
 
     /**
@@ -119,7 +155,7 @@ public abstract class AbstractConnection {
      * @param orderingChannel The ordering channel in which we want to rewrite
      * @param batch           The packet which should be redirected
      */
-    protected abstract void announceRewrite( PacketReliability reliability, int orderingChannel, PacketBatch batch );
+    protected abstract void announceRewrite( PacketReliability reliability, int orderingChannel, byte[] batch );
 
     /**
      * Little internal handler for packets

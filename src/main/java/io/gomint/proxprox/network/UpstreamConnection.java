@@ -102,13 +102,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     @Override
-    protected void announceRewrite( PacketReliability reliability, int orderingChannel, PacketBatch packet ) {
+    protected void announceRewrite( PacketReliability reliability, int orderingChannel, byte[] packet ) {
         if ( currentDownStream != null && currentDownStream.getConnection() != null ) {
-            PacketBuffer buffer = new PacketBuffer( packet.estimateLength() == -1 ? 64 : packet.estimateLength() + 2 );
-            buffer.writeByte( (byte) 0xFE );
-            buffer.writeByte( packet.getId() );
-            packet.serialize( buffer );
-            currentDownStream.getConnection().send( reliability, orderingChannel, buffer.getBuffer() );
+            currentDownStream.getConnection().send( reliability, orderingChannel, packet );
         }
     }
 
@@ -128,8 +124,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     this.loginPacket = new PacketBuffer( buffer.getBuffer(), 0 );
                 }
 
-                handleBatchPacket( buffer, reliability, orderingChannel, batched );
-                return true;
+                return handleBatchPacket( buffer, reliability, orderingChannel, batched );
 
             case Protocol.LOGIN_PACKET:
                 // Parse the login packet
