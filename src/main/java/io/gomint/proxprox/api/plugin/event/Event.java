@@ -7,12 +7,14 @@
 
 package io.gomint.proxprox.api.plugin.event;
 
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
+@EqualsAndHashCode( callSuper = false )
 @ToString( callSuper = true )
 public class Event {
 

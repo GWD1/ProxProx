@@ -141,6 +141,7 @@ public class ProxProx implements Proxy {
 
         this.socketEventListener = new SocketEventListener( this );
         this.serverSocket.setEventHandler( this.socketEventListener );
+        this.serverSocket.setMotd( ChatColor.GOLD + "ProxProx" + ChatColor.BOLD + ChatColor.YELLOW + "1.0" );
 
         try {
             this.serverSocket.bind( this.config.getIp(), this.config.getPort() );
@@ -282,6 +283,11 @@ public class ProxProx implements Proxy {
     @Override
     public Player getPlayer( UUID uuid ) {
         return this.players.get( uuid );
+    }
+
+    @Override
+    public void setMotd( String motd ) {
+        this.serverSocket.setMotd( motd );
     }
 
     // ---------- Internal Player ADD / REMOVE -------------- //

@@ -11,6 +11,7 @@ import io.gomint.jraknet.Socket;
 import io.gomint.jraknet.SocketEvent;
 import io.gomint.jraknet.SocketEventHandler;
 import io.gomint.proxprox.ProxProx;
+import io.gomint.proxprox.api.event.ProxyPingEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -40,6 +41,20 @@ public class SocketEventListener implements SocketEventHandler {
     @Override
     public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
         switch ( socketEvent.getType() ) {
+            case UNCONNECTED_PING:
+                // Throw event around
+                ProxyPingEvent event = this.proxProx .getPluginManager().callEvent( new ProxyPingEvent(
+                        socketEvent.getPingPongInfo().getMotd(),
+                        socketEvent.getPingPongInfo().getOnlineUsers(),
+                        socketEvent.getPingPongInfo().getMaxUsers()
+                ) );
+
+                socketEvent.getPingPongInfo().setMotd( event.getMotd() );
+                socketEvent.getPingPongInfo().setOnlineUsers( event.getOnlinePlayers() );
+                socketEvent.getPingPongInfo().setMaxUsers( event.getMaxPlayers() );
+
+                break;
+
             case NEW_INCOMING_CONNECTION:
                 // Maybe we should accept this?
                 this.lock.writeLock().lock();
