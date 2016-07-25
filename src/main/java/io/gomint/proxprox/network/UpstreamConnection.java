@@ -93,7 +93,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
                     // Do we want to handle it?
                     if ( !handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false ) ) {
-                        if ( currentDownStream != null ) {
+                        if ( currentDownStream != null && currentDownStream.getConnection() != null ) {
                             currentDownStream.getConnection().send( data.getReliability(), data.getOrderingChannel(), data.getPacketData() );
                         }
                     }
