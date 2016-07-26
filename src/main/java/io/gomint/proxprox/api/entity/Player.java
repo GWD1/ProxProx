@@ -25,4 +25,8 @@ public interface Player extends CommandSender {
 
     void connect( String ip, int port );
 
+    boolean isValid();
+
+    long getXboxId();
+
 }

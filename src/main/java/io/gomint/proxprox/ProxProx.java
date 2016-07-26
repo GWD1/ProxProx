@@ -27,6 +27,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.SocketException;
+import java.security.Security;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -58,8 +59,10 @@ public class ProxProx implements Proxy {
     private ThreadFactory serverConnectionsThreadFactory = new ThreadFactoryBuilder().setNameFormat( "DownStream-Connection-%d" ).build();
 
     // Task scheduling
-    @Getter private ExecutorService executorService;
-    @Getter private SyncTaskManager syncTaskManager;
+    @Getter
+    private ExecutorService executorService;
+    @Getter
+    private SyncTaskManager syncTaskManager;
 
     // Listener
     private ServerSocket serverSocket;
@@ -69,7 +72,8 @@ public class ProxProx implements Proxy {
     private AtomicBoolean running = new AtomicBoolean( true );
 
     // Plugins
-    @Getter private PluginManager pluginManager;
+    @Getter
+    private PluginManager pluginManager;
 
     // Player maps
     private Map<UUID, UpstreamConnection> players = new ConcurrentHashMap<>();
@@ -84,6 +88,7 @@ public class ProxProx implements Proxy {
         ProxProx.instance = this;
 
         logger.info( "Starting ProxProx v1.0.0" );
+        Security.addProvider( new org.bouncycastle.jce.provider.BouncyCastleProvider() );
 
         // ------------------------------------ //
         // Executor Initialization
@@ -161,7 +166,7 @@ public class ProxProx implements Proxy {
                 BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
                 String s;
                 try {
-                    while ( running.get()  ) {
+                    while ( running.get() ) {
                         s = in.readLine();
                         if ( s != null && s.length() != 0 ) {
                             pluginManager.dispatchCommand( consoleCommandSender, s );

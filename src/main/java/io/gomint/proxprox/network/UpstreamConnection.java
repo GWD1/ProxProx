@@ -48,6 +48,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // User data
     private UUID uuid;
     private String username;
+    private boolean valid;
+    private long xboxId;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
@@ -133,6 +135,18 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 PacketLogin loginPacket = new PacketLogin();
                 loginPacket.deserialize( buffer );
 
+                // When we are in online mode kick all invalid users
+                if ( this.proxProx.getConfig().isOnlineMode() && !loginPacket.isValid() ) {
+                    disconnect( "Only valid xbox live accounts can join. Please login" );
+                    return true;
+                }
+
+                // Log xbox accounts if needed
+                this.valid = loginPacket.isValid();
+                if ( loginPacket.isValid() ) {
+                    logger.info( "Got valid XBOX Live Account ID: " + loginPacket.getXboxId() );
+                }
+
                 // TODO: Implement correct login logic
                 this.uuid = loginPacket.getUUID();
                 this.username = loginPacket.getUserName();
@@ -196,6 +210,16 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
+    }
+
+    @Override
+    public boolean isValid() {
+        return this.valid;
+    }
+
+    @Override
+    public long getXboxId() {
+        return this.xboxId;
     }
 
     /**

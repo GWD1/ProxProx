@@ -20,6 +20,10 @@ public class ProxyConfig extends SimpleConfig {
 
     private ServerConfig defaultServer = new ServerConfig( "127.0.0.1", 19134 );
 
+    // If onlineMode = true the Proxy kicks players which don't have a xbox payload in their login or the login
+    // in general is not valid (certification issues)
+    private boolean onlineMode = false;
+
     /**
      * Get the IP which should be used to bind to for incoming Upstream (User) Connections
      *
@@ -63,6 +67,13 @@ public class ProxyConfig extends SimpleConfig {
      */
     public ServerConfig getDefaultServer() {
         return this.defaultServer;
+    }
+
+    /**
+     * Are we in online mode or not?
+     */
+    public boolean isOnlineMode() {
+        return this.onlineMode;
     }
 
 }
