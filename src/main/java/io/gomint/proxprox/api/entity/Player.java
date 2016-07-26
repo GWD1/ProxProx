@@ -33,4 +33,7 @@ public interface Player extends CommandSender {
 
     InetSocketAddress getAddress();
 
+    <T> T getMetaData( String key );
+    void setMetaData( String key, Object data );
+
 }

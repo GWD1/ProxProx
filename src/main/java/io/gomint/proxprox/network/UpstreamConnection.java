@@ -27,7 +27,9 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @author geNAZt
@@ -56,6 +58,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Last known good server
     private ServerDataHolder lastKnownServer;
     private boolean firstServer = true;
+
+    // Metadata
+    private Map<String, Object> metaData = new ConcurrentHashMap<>();
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
@@ -147,6 +152,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.valid = loginPacket.isValid();
                 if ( loginPacket.isValid() ) {
                     logger.info( "Got valid XBOX Live Account ID: " + loginPacket.getXboxId() );
+                    this.xboxId = loginPacket.getXboxId();
                 }
 
                 // TODO: Implement correct login logic
@@ -227,6 +233,16 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Override
     public InetSocketAddress getAddress() {
         return ( InetSocketAddress ) this.connection.getAddress();
+    }
+
+    @Override
+    public <T> T getMetaData( String key ) {
+        return (T) this.metaData.get( key );
+    }
+
+    @Override
+    public void setMetaData( String key, Object data ) {
+        this.metaData.put( key, data );
     }
 
     /**
