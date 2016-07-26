@@ -9,6 +9,8 @@ package io.gomint.proxprox.api.entity;
 
 import io.gomint.proxprox.api.command.CommandSender;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.UUID;
 
 /**
@@ -28,5 +30,7 @@ public interface Player extends CommandSender {
     boolean isValid();
 
     long getXboxId();
+
+    InetSocketAddress getAddress();
 
 }

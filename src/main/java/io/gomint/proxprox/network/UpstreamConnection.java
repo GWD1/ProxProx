@@ -24,6 +24,8 @@ import io.gomint.proxprox.network.protocol.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -220,6 +222,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Override
     public long getXboxId() {
         return this.xboxId;
+    }
+
+    @Override
+    public InetSocketAddress getAddress() {
+        return ( InetSocketAddress ) this.connection.getAddress();
     }
 
     /**
