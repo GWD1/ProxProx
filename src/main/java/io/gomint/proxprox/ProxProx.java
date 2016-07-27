@@ -13,6 +13,7 @@ import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.config.ProxyConfig;
+import io.gomint.proxprox.network.CustomProtocolChannels;
 import io.gomint.proxprox.network.SocketEventListener;
 import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
@@ -66,6 +67,7 @@ public class ProxProx implements Proxy {
 
     // Listener
     private ServerSocket serverSocket;
+    @Getter
     private SocketEventListener socketEventListener;
 
     // Main thread
@@ -77,6 +79,9 @@ public class ProxProx implements Proxy {
 
     // Player maps
     private Map<UUID, UpstreamConnection> players = new ConcurrentHashMap<>();
+
+    // Custom networking
+    private CustomProtocolChannels networkChannels;
 
     /**
      * Entrypoint to ProxProx. This should be only called from the Bootstrap so we can
@@ -124,6 +129,9 @@ public class ProxProx implements Proxy {
         if ( !parseCommandLineArguments( args ) ) {
             System.exit( -1 );
         }
+
+        // Build up custom networking
+        this.networkChannels = new CustomProtocolChannels( this );
 
         // Load plugins
         File pluginDir = new File( "plugins/" );
@@ -293,6 +301,11 @@ public class ProxProx implements Proxy {
     @Override
     public void setMotd( String motd ) {
         this.serverSocket.setMotd( motd );
+    }
+
+    @Override
+    public CustomProtocolChannels getNetworkChannels() {
+        return this.networkChannels;
     }
 
     // ---------- Internal Player ADD / REMOVE -------------- //

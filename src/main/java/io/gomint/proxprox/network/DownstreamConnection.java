@@ -8,10 +8,14 @@
 package io.gomint.proxprox.network;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.sun.org.apache.regexp.internal.RE;
 import io.gomint.jraknet.*;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
+import io.gomint.proxprox.api.network.Channel;
+import io.gomint.proxprox.api.network.Packet;
+import io.gomint.proxprox.api.network.PacketSender;
 import io.gomint.proxprox.network.protocol.*;
 import lombok.EqualsAndHashCode;
 import org.slf4j.Logger;
@@ -25,7 +29,7 @@ import java.util.*;
  * @version 1.0
  */
 @EqualsAndHashCode( of = { "ip", "port" }, callSuper = false )
-public class DownstreamConnection extends AbstractConnection implements Server {
+public class DownstreamConnection extends AbstractConnection implements Server, PacketSender {
 
     private static final Logger logger = LoggerFactory.getLogger( DownstreamConnection.class );
 
@@ -156,6 +160,21 @@ public class DownstreamConnection extends AbstractConnection implements Server {
             packetId = buffer.readByte();
         }
 
+        // Check if we are in custom protocol mode :D
+        if ( packetId == (byte) 0xFF ) {
+            PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
+            packetCustomProtocol.deserialize( buffer );
+
+            if ( packetCustomProtocol.getMode() == 2 ) {
+                Channel channel = this.proxProx.getNetworkChannels().channel( (byte) packetCustomProtocol.getChannel() );
+                if ( channel != null ) {
+                    channel.receivePacket( upstreamConnection, packetCustomProtocol.getData() );
+                }
+            }
+
+            return true;
+        }
+
         // Minimalistic protocol
         switch ( packetId ) {
             case Protocol.ADD_ENTITY_PACKET:
@@ -180,6 +199,15 @@ public class DownstreamConnection extends AbstractConnection implements Server {
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && state != ConnectionState.CONNECTED ) {
                     logger.info( "Connected to downstream (" + connection.getConnection().getGuid() + ") for " + this.upstreamConnection.getName() );
                     state = ConnectionState.CONNECTED;
+
+                    // First of all send channels
+                    for ( Map.Entry<String, Byte> stringByteEntry : this.proxProx.getNetworkChannels().getChannels().entrySet() ) {
+                        PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
+                        packetCustomProtocol.setMode( 0 );
+                        packetCustomProtocol.setChannel( stringByteEntry.getValue() );
+                        packetCustomProtocol.setChannelName( stringByteEntry.getKey() );
+                        send( packetCustomProtocol );
+                    }
                 }
 
                 // The first spawn state must come through
@@ -269,6 +297,19 @@ public class DownstreamConnection extends AbstractConnection implements Server {
         }
 
         packets.clear();
+    }
+
+    @Override
+    public void send( Packet packet ) {
+        if ( this.connection == null ) {
+            return;
+        }
+
+        PacketBuffer packetBuffer = new PacketBuffer( packet.estimateLength() == -1 ? 64 : packet.estimateLength() + 3 );
+        packetBuffer.writeByte( (byte) 0xFE );      // MC:PE Header
+        packetBuffer.writeByte( packet.getId() );
+        packet.serialize( packetBuffer );
+        this.connection.getConnection().send( PacketReliability.RELIABLE, packetBuffer.getBuffer() );
     }
 
 }

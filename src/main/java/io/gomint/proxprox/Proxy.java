@@ -8,6 +8,7 @@
 package io.gomint.proxprox;
 
 import io.gomint.proxprox.api.entity.Player;
+import io.gomint.proxprox.api.network.NetworkChannels;
 
 import java.util.UUID;
 
@@ -40,5 +41,7 @@ public interface Proxy {
      * @param motd The motd to set
      */
     void setMotd( String motd );
+
+    NetworkChannels getNetworkChannels();
 
 }

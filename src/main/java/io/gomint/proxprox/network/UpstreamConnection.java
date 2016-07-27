@@ -20,6 +20,7 @@ import io.gomint.proxprox.api.event.PermissionCheckEvent;
 import io.gomint.proxprox.api.event.PlayerLoggedinEvent;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
+import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.protocol.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

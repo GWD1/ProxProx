@@ -12,6 +12,7 @@ import io.gomint.jraknet.SocketEvent;
 import io.gomint.jraknet.SocketEventHandler;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.event.ProxyPingEvent;
+import io.gomint.proxprox.network.protocol.PacketCustomProtocol;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -109,6 +110,18 @@ public class SocketEventListener implements SocketEventHandler {
             }
         } finally {
             this.lock.readLock().unlock();
+        }
+    }
+
+    public void registerNewChannel( String channel, int channelId ) {
+        for ( UpstreamConnection upstreamConnection : this.connections.values() ) {
+            if ( upstreamConnection.getDownStream() != null  ) {
+                PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
+                packetCustomProtocol.setMode( 0 );
+                packetCustomProtocol.setChannel( channelId );
+                packetCustomProtocol.setChannelName( channel );
+                upstreamConnection.getDownStream().send( packetCustomProtocol );
+            }
         }
     }
 
