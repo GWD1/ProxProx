@@ -14,6 +14,7 @@ import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.event.ProxyPingEvent;
 import io.gomint.proxprox.network.protocol.PacketCustomProtocol;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;

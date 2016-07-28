@@ -87,6 +87,18 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         logger.info( "Disconnected downstream..." );
                         DownstreamConnection.this.manualClose = false;
                         DownstreamConnection.this.close();
+
+                        // Check if we need to disconnect upstream
+                        if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                            if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                return;
+                            } else {
+                                upstreamConnection.disconnect( "The Server has gone down" );
+                            }
+                        } else {
+                            upstreamConnection.resetPendingDownStream();
+                        }
+
                         break;
 
                     default:
@@ -222,11 +234,16 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketDisconnect packetDisconnect = new PacketDisconnect();
                 packetDisconnect.deserialize( buffer );
 
-                if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                    upstreamConnection.sendMessage( packetDisconnect.getMessage() );
+                if ( this.equals( upstreamConnection.getDownStream() ) ) {
+                    if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                        upstreamConnection.sendMessage( packetDisconnect.getMessage() );
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    upstreamConnection.resetPendingDownStream();
                 }
-
-                return true;
 
             default:
                 return false;

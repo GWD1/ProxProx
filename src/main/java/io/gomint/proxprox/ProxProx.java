@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.SocketException;
 import java.security.Security;
+import java.util.Collection;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -326,4 +327,9 @@ public class ProxProx implements Proxy {
     public ProxyConfig getConfig() {
         return config;
     }
+
+    public Collection<UpstreamConnection> getPlayers() {
+        return players.values();
+    }
+
 }

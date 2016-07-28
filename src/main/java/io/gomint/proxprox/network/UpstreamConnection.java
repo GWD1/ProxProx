@@ -25,7 +25,6 @@ import io.gomint.proxprox.network.protocol.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Locale;
 import java.util.Map;
@@ -156,7 +155,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     this.xboxId = loginPacket.getXboxId();
                 }
 
-                // TODO: Implement correct login logic
+                // Check for uuid or name equals
+                for ( UpstreamConnection upstreamConnection : this.proxProx.getPlayers() ) {
+                    if ( loginPacket.getUUID().equals( upstreamConnection.getUUID() ) || loginPacket.getUserName().equals( upstreamConnection.getName() ) ) {
+                        disconnect( "Logged in from another location" );
+                        return true;
+                    }
+                }
+
                 this.uuid = loginPacket.getUUID();
                 this.username = loginPacket.getUserName();
 
@@ -449,6 +455,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         this.currentDownStream = downstreamConnection;
+    }
+
+    public void resetPendingDownStream() {
+        this.pendingDownStream = null;
     }
 
 }
