@@ -252,6 +252,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.metaData.put( key, data );
     }
 
+    @Override
+    public long getPing() {
+        return this.connection.getPing();
+    }
+
     /**
      * New downstream connected
      *

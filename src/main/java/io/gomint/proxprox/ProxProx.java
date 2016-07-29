@@ -146,7 +146,7 @@ public class ProxProx implements Proxy {
         this.pluginManager.enablePlugins();
 
         // Register default commands
-        this.pluginManager.registerCommand( null, new Commandstop( this ) );
+        this.pluginManager.registerCommand( null, new Commandend( this ) );
         this.pluginManager.registerCommand( null, new Commandplugins( this.pluginManager ) );
 
         // Bind upstream UDP Raknet

@@ -15,7 +15,7 @@ import io.gomint.proxprox.api.command.CommandSender;
  * @author geNAZt
  * @version 1.0
  */
-public class Commandstop extends Command {
+public class Commandend extends Command {
 
     private final ProxProx proxProx;
 
@@ -24,15 +24,15 @@ public class Commandstop extends Command {
      *
      * @param proxProx The ProxProx instance to stop
      */
-    public Commandstop( ProxProx proxProx ) {
-        super( "stop", "Stop ProxProx" );
+    public Commandend( ProxProx proxProx ) {
+        super( "end", "Stop ProxProx" );
         this.proxProx = proxProx;
     }
 
     @Override
     public void execute( CommandSender sender, String[] args ) {
         // Tell Prox Prox to shut down
-        if ( sender.hasPermission( "proxprox.command.stop" ) ) {
+        if ( sender.hasPermission( "proxprox.command.end" ) ) {
             proxProx.shutdown();
         }
     }

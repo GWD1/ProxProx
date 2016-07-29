@@ -36,4 +36,6 @@ public interface Player extends CommandSender {
     <T> T getMetaData( String key );
     void setMetaData( String key, Object data );
 
+    long getPing();
+
 }
