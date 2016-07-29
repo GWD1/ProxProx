@@ -31,6 +31,7 @@ import java.net.SocketException;
 import java.security.Security;
 import java.util.Collection;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -166,26 +167,28 @@ public class ProxProx implements Proxy {
         }
 
         // Read stdin
-        new Thread( new Runnable() {
-            @Override
-            public void run() {
-                Thread.currentThread().setName( "STDIN Read" );
-                ConsoleCommandSender consoleCommandSender = new ConsoleCommandSender();
+        if ( Objects.equals( System.getProperty( "disableStdin", "false" ), "false" ) ) {
+            new Thread( new Runnable() {
+                @Override
+                public void run() {
+                    Thread.currentThread().setName( "STDIN Read" );
+                    ConsoleCommandSender consoleCommandSender = new ConsoleCommandSender();
 
-                BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
-                String s;
-                try {
-                    while ( running.get() ) {
-                        s = in.readLine();
-                        if ( s != null && s.length() != 0 ) {
-                            pluginManager.dispatchCommand( consoleCommandSender, s );
+                    BufferedReader in = new BufferedReader( new InputStreamReader( System.in ) );
+                    String s;
+                    try {
+                        while ( running.get() ) {
+                            s = in.readLine();
+                            if ( s != null && s.length() != 0 ) {
+                                pluginManager.dispatchCommand( consoleCommandSender, s );
+                            }
                         }
+                    } catch ( IOException e ) {
+                        e.printStackTrace();
                     }
-                } catch ( IOException e ) {
-                    e.printStackTrace();
                 }
-            }
-        } ).start();
+            } ).start();
+        }
 
         // Tick loop
         float lastTickTime = Float.MIN_NORMAL;
