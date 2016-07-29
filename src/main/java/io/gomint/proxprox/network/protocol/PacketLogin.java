@@ -10,9 +10,7 @@ package io.gomint.proxprox.network.protocol;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureException;
+import io.jsonwebtoken.*;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -28,6 +26,7 @@ import java.security.NoSuchProviderException;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +67,7 @@ public class PacketLogin extends Packet {
     // Validation of login
     private String validationKey;
     private boolean valid = true;
+    private boolean firstCertAuth = true;
 
     /**
      * Construct a new login packet which contains all data to login into a MC:PE server
@@ -111,12 +111,12 @@ public class PacketLogin extends Packet {
         byte[] stringBuffer = new byte[byteBuffer.getInt()];
         byteBuffer.get( stringBuffer );
 
-        // Decode the json stuff (i really don't know why they base64 all of this)
+        // Decode the json stuff
         try {
             JSONObject jsonObject = (JSONObject) new JSONParser().parse( new String( stringBuffer ) );
             JSONArray chainArray = (JSONArray) jsonObject.get( "chain" );
             if ( chainArray != null ) {
-                this.validationKey = MOJANG_PUBLIC;
+                this.validationKey = parseBae64JSON( (String) chainArray.get( chainArray.size() - 1 ) ); // First key in chain is last response in chain #brainfuck :D
                 for ( Object chainObj : chainArray ) {
                     decodeBase64JSON( (String) chainObj );
                 }
@@ -130,6 +130,15 @@ public class PacketLogin extends Packet {
         byteBuffer.get( stringBuffer );
     }
 
+    private String parseBae64JSON( String data ) throws ParseException {
+        // Be able to "parse" the payload
+        String[] tempBase64 = data.split( "\\." );
+
+        String payload = new String( Base64.getDecoder().decode( tempBase64[1] ) );
+        JSONObject chainData = (JSONObject) new JSONParser().parse( payload );
+        return (String) chainData.get( "identityPublicKey" );
+    }
+
     private void decodeBase64JSON( String data ) throws ParseException {
         try {
             // Get validation key
@@ -139,11 +148,19 @@ public class PacketLogin extends Packet {
             }
 
             // Check JWT
-            Claims claims = Jwts.parser()
-                    .setSigningKey( key )
-                    .parseClaimsJws( data ).getBody();
+            Claims claims = Jwts.parser().setSigningKey( key ).parseClaimsJws( data ).getBody();
 
-            // Check if issue of cert is correct
+            // Only certification authory is allowed to set new validation keys
+            Boolean certificateAuthority = (Boolean) claims.get( "certificateAuthority" );
+            if ( certificateAuthority != null && certificateAuthority ) {
+                this.validationKey = (String) claims.get( "identityPublicKey" );
+
+                // We have to blindy trust this auth when its the first (they send the root cert in 0.15.4+)
+                if ( this.firstCertAuth && this.validationKey.equals( MOJANG_PUBLIC ) ) {
+                    this.firstCertAuth = false;
+                    return;
+                }
+            }
 
             // Invalid duration frame ?
             if ( claims.getExpiration().getTime() - claims.getIssuedAt().getTime() != TimeUnit.DAYS.toMillis( 1 ) ) {
@@ -155,12 +172,6 @@ public class PacketLogin extends Packet {
             if ( !"RealmsAuthorization".equals( claims.getIssuer() ) ) {
                 System.out.println( "Certification issuer is wrong." );
                 this.valid = false;
-            }
-
-            // Only certification authory is allowed to set new validation keys
-            Boolean certificateAuthority = (Boolean) claims.get( "certificateAuthority" );
-            if ( certificateAuthority != null && certificateAuthority ) {
-                this.validationKey = (String) claims.get( "identityPublicKey" );
             }
 
             // Check for extra data
@@ -178,13 +189,14 @@ public class PacketLogin extends Packet {
                 this.userName = (String) extraData.get( "displayName" );
                 this.uuid = UUID.fromString( (String) extraData.get( "identity" ) );
             }
-        } catch ( SignatureException e ) {
+        } catch ( Exception e ) {
             // This normally comes when the user is not logged in into xbox live since the payload only sends
             // the self signed cert without a certifaction authory
             this.valid = false;
 
             // Be able to "parse" the payload
             String[] tempBase64 = data.split( "\\." );
+
             String payload = new String( Base64.getDecoder().decode( tempBase64[1] ) );
             JSONObject chainData = (JSONObject) new JSONParser().parse( payload );
             if ( chainData.containsKey( "extraData" ) ) {

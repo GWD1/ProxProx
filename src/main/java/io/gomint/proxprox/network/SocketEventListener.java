@@ -13,6 +13,8 @@ import io.gomint.jraknet.SocketEventHandler;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.event.ProxyPingEvent;
 import io.gomint.proxprox.network.protocol.PacketCustomProtocol;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.HashMap;
@@ -25,6 +27,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
  * @version 1.0
  */
 public class SocketEventListener implements SocketEventHandler {
+
+    private static final Logger logger = LoggerFactory.getLogger( SocketEventListener.class );
 
     private final Map<Long, UpstreamConnection> connections = new HashMap<>();
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
@@ -83,6 +87,8 @@ public class SocketEventListener implements SocketEventHandler {
                     // First check if we already have a client like this
                     UpstreamConnection upstreamConnection = this.connections.remove( socketEvent.getConnection().getGuid() );
                     if ( upstreamConnection != null ) {
+                        logger.info("Disconnected upstream: " + socketEvent.getConnection().getGuid() );
+
                         if ( upstreamConnection.getUUID() != null ) {
                             this.proxProx.removePlayer( upstreamConnection );
                         }

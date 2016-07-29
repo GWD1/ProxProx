@@ -82,7 +82,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         DownstreamConnection.this.upstreamConnection.onDownSteamConnected( DownstreamConnection.this );
                         break;
 
-                    //case CONNECTION_CLOSED:
+                    case CONNECTION_CLOSED:
                     case CONNECTION_DISCONNECTED:
                         logger.info( "Disconnected downstream..." );
                         DownstreamConnection.this.manualClose = false;
@@ -254,10 +254,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
      * Close the connection to the underlying RakNet Server
      */
     public void close() {
-        if ( this.manualClose ) {
-            this.connection.close();
-        }
-
+        this.connection.close();
         this.connectionReadThread.interrupt();
     }
 
@@ -272,6 +269,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             logger.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
             this.connection.getConnection().disconnect( reason );
+            this.connection.close();
         }
     }
 

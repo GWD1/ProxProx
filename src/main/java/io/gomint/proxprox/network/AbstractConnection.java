@@ -53,11 +53,11 @@ public abstract class AbstractConnection {
             return true;
         }
 
-        buffer.skip( 4 );              // Compressed payload length (not of interest; only uncompressed size matters)
+        int compressedSize = buffer.readInt();              // Compressed payload length (not of interest; only uncompressed size matters)
 
-        InflaterInputStream inflaterInputStream = new InflaterInputStream( new ByteArrayInputStream( buffer.getBuffer(), buffer.getPosition(), buffer.getRemaining() ) );
+        InflaterInputStream inflaterInputStream = new InflaterInputStream( new ByteArrayInputStream( buffer.getBuffer(), buffer.getPosition(), compressedSize ) );
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream( buffer.getBuffer().length );
+        ByteArrayOutputStream bout = new ByteArrayOutputStream( compressedSize );
         byte[] batchIntermediate = new byte[256];
 
         try {

@@ -331,7 +331,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      */
     public void disconnect( String reason ) {
         send( new PacketDisconnect( reason ) );
-        // this.connection.disconnect( reason );
+        this.connection.disconnect( reason );
 
         if ( this.pendingDownStream != null ) {
             this.pendingDownStream.disconnect( reason );
