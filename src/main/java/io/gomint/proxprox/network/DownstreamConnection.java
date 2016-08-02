@@ -255,7 +255,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
      */
     public void close() {
         this.connection.close();
-        this.connectionReadThread.interrupt();
+
+        if ( this.connectionReadThread != null ) {
+            this.connectionReadThread.interrupt();
+        }
     }
 
     public void send( byte[] data ) {
