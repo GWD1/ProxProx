@@ -8,7 +8,6 @@
 package io.gomint.proxprox.network;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.sun.org.apache.regexp.internal.RE;
 import io.gomint.jraknet.*;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
@@ -79,7 +78,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     case CONNECTION_ATTEMPT_SUCCEEDED:
                         // We got accepted *yay*
                         DownstreamConnection.this.setup();
-                        DownstreamConnection.this.upstreamConnection.onDownSteamConnected( DownstreamConnection.this );
+                        DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
                         break;
 
                     case CONNECTION_CLOSED:
