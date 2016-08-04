@@ -52,7 +52,7 @@
         <dependency>
             <groupId>io.gomint</groupId>
             <artifactId>jraknet</artifactId>
-            <version>3.2.5-0.15.2</version>
+            <version>3.2.6-0.15.2-SNAPSHOT</version>
         </dependency>
 
         <!-- Logging -->
