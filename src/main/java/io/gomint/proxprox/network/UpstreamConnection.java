@@ -128,7 +128,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Override
     protected boolean handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
         // Store in debugger
-        this.networkDebugger.addPacket( new PacketBuffer( buffer.getBuffer(),0 ), batched );
+        this.networkDebugger.addPacket( new PacketBuffer( buffer.getBuffer(), 0 ), batched );
 
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
@@ -248,7 +248,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Override
     public InetSocketAddress getAddress() {
-        return ( InetSocketAddress ) this.connection.getAddress();
+        return (InetSocketAddress) this.connection.getAddress();
     }
 
     @Override
@@ -271,7 +271,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      *
      * @param downstreamConnection The downstream which connected
      */
-    void onDownSteamConnected( DownstreamConnection downstreamConnection ) {
+    void onDownStreamConnected( DownstreamConnection downstreamConnection ) {
         // Close old connection and store new one
         if ( this.currentDownStream != null ) {
             this.lastKnownServer = new ServerDataHolder( this.currentDownStream.getIP(), this.currentDownStream.getPort() );
