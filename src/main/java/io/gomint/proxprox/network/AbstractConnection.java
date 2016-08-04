@@ -14,9 +14,7 @@ import io.gomint.proxprox.network.protocol.PacketBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.Deflater;
@@ -66,6 +64,15 @@ public abstract class AbstractConnection {
                 bout.write( batchIntermediate, 0, read );
             }
         } catch ( IOException e ) {
+            // Check if we have a debugger attached
+            if ( this instanceof UpstreamConnection ) {
+                try {
+                    ((UpstreamConnection) this).getNetworkDebugger().print( new FileOutputStream( "debug/" + System.currentTimeMillis() + ".dbg" ) );
+                } catch ( FileNotFoundException e1 ) {
+                    e1.printStackTrace();
+                }
+            }
+
             logger.error( "Failed to decompress batch packet", e );
             return true;
         }

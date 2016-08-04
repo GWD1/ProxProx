@@ -21,7 +21,9 @@ import io.gomint.proxprox.api.event.PlayerLoggedinEvent;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
+import io.gomint.proxprox.network.debugger.NetworkDebugger;
 import io.gomint.proxprox.network.protocol.*;
+import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +64,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
 
+    // Debug
+    @Getter
+    private NetworkDebugger networkDebugger = new NetworkDebugger();
+
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
      *
@@ -86,7 +92,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.connectionReadThread = this.proxProx.getNewClientConnectionThread( new Runnable() {
             @Override
             public void run() {
-                Thread.currentThread().setName( "UpStream unkown (" + connection.getGuid() + ") [Packet Read/Rewrite]" );
+                Thread.currentThread().setName( "UpStream unknown (" + connection.getGuid() + ") [Packet Read/Rewrite]" );
 
                 while ( connection.isConnected() ) {
                     EncapsulatedPacket data = connection.poll();
@@ -121,6 +127,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Override
     protected boolean handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
+        // Store in debugger
+        this.networkDebugger.addPacket( new PacketBuffer( buffer.getBuffer(),0 ), batched );
+
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
         if ( packetId == (byte) 0xFE && buffer.getRemaining() > 0 ) {
