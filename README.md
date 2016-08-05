@@ -18,3 +18,11 @@ details.
 ## Documentation
 
 There currently is no documentation as things are still changing frequently.
+
+## TODO List 
+
+* Documentation (JavaDocs) for every piece of Code inside of the api Package
+* Events for Chat
+* Working Playerlist manipulation, currently switching Servers will cause corruption in the List
+* Code cleanup inside of the Down and Upstream Connections (like abstract the read Threads into Executorpools)
+* Better Debug interface, something like Watchdog for CPU, Network Trace for RakNet, both configurable
