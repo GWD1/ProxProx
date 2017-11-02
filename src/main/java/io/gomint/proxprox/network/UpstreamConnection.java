@@ -22,7 +22,6 @@ import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.jwt.*;
-import io.gomint.proxprox.network.debugger.NetworkDebugger;
 import io.gomint.proxprox.network.protocol.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -82,10 +81,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // View distance
     @Getter
     private int viewDistance = 6;
-
-    // Debug
-    @Getter
-    private NetworkDebugger networkDebugger = new NetworkDebugger();
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
