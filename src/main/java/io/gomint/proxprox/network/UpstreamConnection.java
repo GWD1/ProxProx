@@ -341,7 +341,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                                     byte[] data = new byte[buffer.getRemaining()];
                                     buffer.readBytes( data );
 
-                                    buffer = new PacketBuffer( 64 );
+                                    buffer = new PacketBuffer( 8 );
                                     buffer.writeUnsignedVarLong( currentDownStream.getEntityId() );
                                     buffer.writeBytes( data );
                                     buffer.resetPosition();
@@ -349,7 +349,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                                     byte[] data = new byte[buffer.getRemaining()];
                                     buffer.readBytes( data );
 
-                                    buffer = new PacketBuffer( 64 );
+                                    buffer = new PacketBuffer( 8 );
                                     buffer.writeUnsignedVarLong( this.entityId );
                                     buffer.writeBytes( data );
                                     buffer.resetPosition();
@@ -459,19 +459,21 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 send( new PacketRemoveEntity( eID ) );
             }
 
-            // Loading screen (holy did this take long to figure out :D)
+            /*// Loading screen (holy did this take long to figure out :D)
             send( new PacketChangeDimension( (byte) 0 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
             send( new PacketChangeDimension( (byte) 1 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
 
-            move( 0, 4000, 0, 0, 0 );
-            sendEmptyChunks();
+
 
             send( new PacketChangeDimension( (byte) 1 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
             send( new PacketChangeDimension( (byte) 0 ) );
             // There needs to be one additional spawn but the downstream server sends one so its ok
+*/
+            move( 0, 4000, 0, 0, 0 );
+            sendEmptyChunks();
 
             this.currentDownStream = null;
         }
@@ -514,7 +516,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
     }
 
-    private void move( float x, float y, float z, float yaw, float pitch ) {
+    public void move( float x, float y, float z, float yaw, float pitch ) {
         PacketMovePlayer packet = new PacketMovePlayer();
         packet.setEntityId( this.entityId );
         packet.setX( x );
@@ -671,9 +673,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         this.currentDownStream = downstreamConnection;
-
-        move( this.currentDownStream.getSpawnX(), this.currentDownStream.getSpawnY(), this.currentDownStream.getSpawnZ(),
-                this.currentDownStream.getSpawnYaw(), this.currentDownStream.getSpawnPitch() );
 
         PacketSetDifficulty setDifficulty = new PacketSetDifficulty();
         setDifficulty.setDifficulty( this.currentDownStream.getDifficulty() );

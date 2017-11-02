@@ -226,6 +226,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 if ( upstreamConnection.isFirstServer() ) {
                     buffer.setPosition( pos );
                     upstreamConnection.send( packetId, buffer );
+                } else {
+                    upstreamConnection.move( this.getSpawnX(), this.getSpawnY(), this.getSpawnZ(),
+                            this.getSpawnYaw(), this.getSpawnPitch() );
                 }
 
                 break;
@@ -302,9 +305,12 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 // The first spawn state must come through
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN ) {
+                    if ( upstreamConnection.isFirstServer() ) {
+                        upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
+                    }
+
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
-                    upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
 
                     PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
                     setChunkRadius.setChunkRadius( upstreamConnection.getViewDistance() );
