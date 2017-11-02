@@ -35,13 +35,6 @@ public interface Proxy {
      */
     Player getPlayer( UUID uuid );
 
-    /**
-     * Set the motd
-     *
-     * @param motd The motd to set
-     */
-    void setMotd( String motd );
-
     NetworkChannels getNetworkChannels();
 
 }

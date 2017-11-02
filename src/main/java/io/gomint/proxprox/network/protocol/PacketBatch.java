@@ -25,25 +25,18 @@ public class PacketBatch extends Packet {
 	private byte[] payload;
 
 	public PacketBatch() {
-		super( Protocol.BATCH_PACKET );
+		super( Protocol.PACKET_BATCH );
 	}
 
 	@Override
 	public void serialize( PacketBuffer buffer ) {
-        buffer.writeInt( this.payload.length );
         buffer.writeBytes( this.payload );
 	}
 
 	@Override
 	public void deserialize( PacketBuffer buffer ) {
-		int length = buffer.readInt();
-		this.payload = new byte[length];
+		this.payload = new byte[buffer.getRemaining()];
 		buffer.readBytes( this.payload );
-	}
-
-	@Override
-	public int estimateLength() {
-		return 4 + this.payload.length;
 	}
 
 }

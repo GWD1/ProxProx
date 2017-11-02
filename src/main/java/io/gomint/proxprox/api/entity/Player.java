@@ -29,7 +29,7 @@ public interface Player extends CommandSender {
 
     boolean isValid();
 
-    long getXboxId();
+    String getXboxId();
 
     InetSocketAddress getAddress();
 

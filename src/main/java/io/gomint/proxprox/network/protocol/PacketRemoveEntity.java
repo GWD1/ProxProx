@@ -35,11 +35,11 @@ public class PacketRemoveEntity extends Packet {
 
     @Override
     public void serialize( PacketBuffer buffer ) {
-
+        buffer.writeSignedVarLong( this.entityId );
     }
 
     @Override
     public void deserialize( PacketBuffer buffer ) {
-        this.entityId = buffer.readLong();
+        this.entityId = buffer.readSignedVarLong().longValue();
     }
 }

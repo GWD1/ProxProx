@@ -10,11 +10,13 @@ package io.gomint.proxprox.network.protocol;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
+import lombok.Data;
 
 /**
  * @author BlackyPaw
  * @version 1.0
  */
+@Data
 public class PacketPlayState extends Packet {
 
 	/**
@@ -91,7 +93,7 @@ public class PacketPlayState extends Packet {
 	 * Construct new PlayState packet which has been sent from the Downstream server
      */
 	public PacketPlayState() {
-		super( Protocol.PLAY_STATUS_PACKET );
+		super( Protocol.PACKET_PLAY_STATE );
 	}
 
 	/**
@@ -100,7 +102,7 @@ public class PacketPlayState extends Packet {
 	 * @param state The state this packet should set
      */
 	public PacketPlayState( PlayState state ) {
-		super( Protocol.PLAY_STATUS_PACKET );
+		super( Protocol.PACKET_PLAY_STATE );
 		this.state = state;
 	}
 
@@ -117,15 +119,6 @@ public class PacketPlayState extends Packet {
 	@Override
 	public int estimateLength() {
 		return 4;
-	}
-
-	/**
-	 * Get the enum constant for the state this packet sets
-	 *
-	 * @return enum constant for the state
-     */
-	public PlayState getState() {
-		return state;
 	}
 
 }

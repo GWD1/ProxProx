@@ -70,4 +70,8 @@ public abstract class Packet {
 		return 0;
 	}
 
+	public boolean mustBeInBatch() {
+		return true;
+	}
+
 }

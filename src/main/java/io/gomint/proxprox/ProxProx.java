@@ -14,6 +14,7 @@ import io.gomint.proxprox.api.command.ConsoleCommandSender;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.config.ProxyConfig;
 import io.gomint.proxprox.network.CustomProtocolChannels;
+import io.gomint.proxprox.network.EncryptionKeyFactory;
 import io.gomint.proxprox.network.SocketEventListener;
 import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
@@ -50,6 +51,7 @@ public class ProxProx implements Proxy {
      * Only for {@link Proxy#getInstance()}. DO NOT USE IN PLUGINS!
      */
     public static ProxProx instance;
+
     /**
      * Chat prefix for internal Command usage
      */
@@ -113,8 +115,8 @@ public class ProxProx implements Proxy {
 
         this.executorService = new ThreadPoolExecutor( 0, 512, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), threadFactory );
 
-        // We target 512 TPS
-        long skipNanos = TimeUnit.SECONDS.toNanos( 1 ) / 512;
+        // We target 100 TPS
+        long skipNanos = TimeUnit.SECONDS.toNanos( 1 ) / 100;
         this.syncTaskManager = new SyncTaskManager( this, skipNanos );
 
         // Load config first so we can override
@@ -152,11 +154,11 @@ public class ProxProx implements Proxy {
 
         // Bind upstream UDP Raknet
         this.serverSocket = new ServerSocket( 10000 );
+        this.serverSocket.setMojangModificationEnabled( true );
         this.serverSocket.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "jRaknet-Upstream-%d" ).build() );
 
         this.socketEventListener = new SocketEventListener( this );
         this.serverSocket.setEventHandler( this.socketEventListener );
-        this.serverSocket.setMotd( ChatColor.GOLD + "ProxProx" + ChatColor.BOLD + ChatColor.YELLOW + "1.0" );
 
         try {
             this.serverSocket.bind( this.config.getIp(), this.config.getPort() );
@@ -303,11 +305,6 @@ public class ProxProx implements Proxy {
     }
 
     @Override
-    public void setMotd( String motd ) {
-        this.serverSocket.setMotd( motd );
-    }
-
-    @Override
     public CustomProtocolChannels getNetworkChannels() {
         return this.networkChannels;
     }
@@ -320,7 +317,6 @@ public class ProxProx implements Proxy {
     public void removePlayer( UpstreamConnection upstreamConnection ) {
         this.players.remove( upstreamConnection.getUUID() );
     }
-
 
     /**
      * Get the config for this Proxy

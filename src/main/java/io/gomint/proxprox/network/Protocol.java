@@ -13,15 +13,25 @@ package io.gomint.proxprox.network;
  */
 public class Protocol {
 
+    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = 141;
+    public static final int MINECRAFT_PE_PROTOCOL_VERSION = 137;
+    public static final String MINECRAFT_PE_NETWORK_VERSION = "1.2.5.15";
+
     /**
      * Packet ID of the login packet
      */
-    public static final byte LOGIN_PACKET = (byte) 0x01;
+    public static final byte PACKET_LOGIN = (byte) 0x01;
 
     /**
      * Packet ID of the status packet
      */
-    public static final byte PLAY_STATUS_PACKET = (byte) 0x02;
+    public static final byte PACKET_PLAY_STATE = (byte) 0x02;
+    public static final byte PACKET_ENCRYPTION_REQUEST = (byte) 0x03;
+    public static final byte PACKET_ENCRYPTION_READY = (byte) 0x04;
+    public static final byte PACKET_RESOURCEPACK_INFO = (byte) 0x06;
+    public static final byte PACKET_RESOURCEPACK_STACK = (byte) 0x07;
+    public static final byte PACKET_RESOURCEPACK_RESPONSE = (byte) 0x08;
+    public static final byte PACKET_START_GAME = (byte) 0x0b;
 
     /**
      * Packet ID of the disconnect packet
@@ -31,41 +41,39 @@ public class Protocol {
     /**
      * Packet ID of the batch packet
      */
-    public static final byte BATCH_PACKET = (byte) 0x06;
-
-    /**
-     * Packet ID for Text messages
-     */
-    public static final byte TEXT_PACKET = (byte) 0x07;
+    public static final byte PACKET_BATCH = (byte) 0xFE;
 
     /**
      * Packet ID for Player movement
      */
-    public static final byte MOVE_PLAYER_PACKET = (byte) 0x10;
+    public static final byte PACKET_MOVE_PLAYER = (byte) 0x13;
 
     /**
      * Packet ID for Player Add
      */
-    public static final byte ADD_PLAYER_PACKET = (byte) 0x0a;
+    public static final byte ADD_PLAYER_PACKET = (byte) 0x0c;
 
     /**
      * Packet ID for Entity Add
      */
-    public static final byte ADD_ENTITY_PACKET = (byte) 0x0b;
+    public static final byte ADD_ENTITY_PACKET = (byte) 0x0d;
 
     /**
      * Packet ID for Entity Remove
      */
-    public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0c;
+    public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0e;
 
     /**
      * Packet ID for Chunk data
      */
-    public static final byte CHUNK_DATA_PACKET = (byte) 0x34;
+    public static final byte CHUNK_DATA_PACKET = (byte) 0x3A;
+    public static final byte PACKET_SET_DIFFICULTY = (byte) 0x3C;
+    public static final byte PACKET_SET_GAMEMODE = (byte) 0x3E;
 
     /**
      * Packet ID for Dimension change
      */
-    public static final byte CHANGE_DIMENSION_PACKET = (byte) 0x36;
+    public static final byte CHANGE_DIMENSION_PACKET = (byte) 0x3D;
+    public static final byte PACKET_SET_CHUNK_RADIUS = (byte) 0x45;
 
 }

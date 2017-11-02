@@ -21,13 +21,21 @@ import io.gomint.proxprox.api.event.PlayerLoggedinEvent;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
+import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.debugger.NetworkDebugger;
 import io.gomint.proxprox.network.protocol.*;
 import lombok.Getter;
+import lombok.Setter;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
@@ -39,13 +47,15 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class UpstreamConnection extends AbstractConnection implements Player {
 
+    private static final PacketBuffer EMPTY_CHUNK = new PacketBuffer( 1 + ( 16 * 16 * 2 ) + ( 16 * 16 ) + 2 );
+    private static final EncryptionRequestForger FORGER = new EncryptionRequestForger();
     private static final Logger logger = LoggerFactory.getLogger( UpstreamConnection.class );
     private final ProxProx proxProx;
 
     // AbstractConnection stuff
     private final Connection connection;
     private Thread connectionReadThread;
-    private PacketBuffer loginPacket;
+    private PostProcessWorker postProcessWorker;
 
     // Downstream
     private DownstreamConnection currentDownStream;
@@ -55,14 +65,23 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private UUID uuid;
     private String username;
     private boolean valid;
-    private long xboxId;
+    private String xboxId;
+    private JSONObject skinData;
+
+    @Setter @Getter
+    private long entityId = -1;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
+    @Getter
     private boolean firstServer = true;
 
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
+
+    // View distance
+    @Getter
+    private int viewDistance = 6;
 
     // Debug
     @Getter
@@ -79,6 +98,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.proxProx = proxProx;
         this.connection = connection;
 
+
         logger.info( "New upstream connection for " + connection.getAddress().toString() + " (GUID: " + connection.getGuid() + ")" );
 
         this.setup();
@@ -89,14 +109,21 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         super.setup();
 
         // Create thread for reading data
+        this.postProcessWorker = new PostProcessWorker( connection );
         this.connectionReadThread = this.proxProx.getNewClientConnectionThread( new Runnable() {
             @Override
             public void run() {
                 Thread.currentThread().setName( "UpStream unknown (" + connection.getGuid() + ") [Packet Read/Rewrite]" );
 
                 while ( connection.isConnected() ) {
-                    EncapsulatedPacket data = connection.poll();
+                    EncapsulatedPacket data = connection.receive();
                     if ( data == null ) {
+                        try {
+                            Thread.sleep( 10 );
+                        } catch ( InterruptedException e ) {
+                            e.printStackTrace();
+                        }
+
                         continue;
                     }
 
@@ -107,11 +134,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     }
 
                     // Do we want to handle it?
-                    if ( !handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false ) ) {
-                        if ( currentDownStream != null && currentDownStream.getConnection() != null ) {
-                            currentDownStream.getConnection().send( data.getReliability(), data.getOrderingChannel(), data.getPacketData() );
-                        }
-                    }
+                    handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
                 }
             }
         } );
@@ -119,100 +142,248 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     @Override
-    protected void announceRewrite( PacketReliability reliability, int orderingChannel, byte[] packet ) {
-        if ( currentDownStream != null && currentDownStream.getConnection() != null ) {
-            currentDownStream.getConnection().send( reliability, orderingChannel, packet );
-        }
-    }
-
-    @Override
-    protected boolean handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
-        // Store in debugger
-        this.networkDebugger.addPacket( new PacketBuffer( buffer.getBuffer(), 0 ), batched );
-
+    protected void handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
-        if ( packetId == (byte) 0xFE && buffer.getRemaining() > 0 ) {
-            packetId = buffer.readByte();
+        if ( packetId != Protocol.PACKET_BATCH ) {
+            buffer.readShort();
         }
+
+        int pos = buffer.getPosition();
 
         // Minimalistic protocol
         switch ( packetId ) {
-            case Protocol.BATCH_PACKET:
-                // The first batch should include the login packet
-                if ( this.loginPacket == null ) {
-                    this.loginPacket = new PacketBuffer( buffer.getBuffer(), 0 );
+            case Protocol.PACKET_BATCH:
+                this.handleBatchPacket( buffer, reliability, orderingChannel, batched );
+                break;
+
+            case Protocol.PACKET_SET_CHUNK_RADIUS:
+                PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
+                setChunkRadius.deserialize( buffer );
+
+                this.viewDistance = setChunkRadius.getChunkRadius();
+                logger.debug( "New view distance: " + this.viewDistance );
+
+                if ( currentDownStream != null ) {
+                    currentDownStream.send( setChunkRadius );
                 }
 
-                return handleBatchPacket( buffer, reliability, orderingChannel, batched );
+                break;
 
-            case Protocol.LOGIN_PACKET:
+            case Protocol.PACKET_LOGIN:
                 // Parse the login packet
-                PacketLogin loginPacket = new PacketLogin();
-                loginPacket.deserialize( buffer );
+                PacketLogin packet = new PacketLogin();
+                packet.deserialize( buffer );
+
+                // Check versions
+                logger.debug( "Trying to login with protocol version: " + packet.getProtocol() );
+                if ( packet.getProtocol() != Protocol.MINECRAFT_PE_PROTOCOL_VERSION
+                        && packet.getProtocol() != Protocol.MINECRAFT_PE_BETA_PROTOCOL_VERSION ) {
+                    String message;
+                    if ( packet.getProtocol() < Protocol.MINECRAFT_PE_PROTOCOL_VERSION ) {
+                        message = "disconnectionScreen.outdatedClient";
+                        sendPlayState( PacketPlayState.PlayState.LOGIN_FAILED_CLIENT );
+                    } else {
+                        message = "disconnectionScreen.outdatedServer";
+                        sendPlayState( PacketPlayState.PlayState.LOGIN_FAILED_SERVER );
+                    }
+
+                    disconnect( message );
+                    return;
+                }
+
+                // More data please
+                ByteBuffer byteBuffer = ByteBuffer.wrap( packet.getPayload() );
+                byteBuffer.order( ByteOrder.LITTLE_ENDIAN );
+                byte[] stringBuffer = new byte[byteBuffer.getInt()];
+                byteBuffer.get( stringBuffer );
+
+                // Parse chain and validate
+                String jwt = new String( stringBuffer );
+                JSONObject json;
+                try {
+                    json = parseJwtString( jwt );
+                } catch ( ParseException e ) {
+                    e.printStackTrace();
+                    return;
+                }
+
+                Object jsonChainRaw = json.get( "chain" );
+                if ( jsonChainRaw == null || !( jsonChainRaw instanceof JSONArray ) ) {
+                    return;
+                }
+
+                MojangChainValidator chainValidator = new MojangChainValidator();
+                JSONArray jsonChain = (JSONArray) jsonChainRaw;
+                for ( Object jsonTokenRaw : jsonChain ) {
+                    if ( jsonTokenRaw instanceof String ) {
+                        try {
+                            JwtToken token = JwtToken.parse( (String) jsonTokenRaw );
+                            chainValidator.addToken( token );
+                        } catch ( IllegalArgumentException e ) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+
+                this.valid = chainValidator.validate();
 
                 // When we are in online mode kick all invalid users
-                if ( this.proxProx.getConfig().isOnlineMode() && !loginPacket.isValid() ) {
+                if ( this.proxProx.getConfig().isOnlineMode() && !this.valid ) {
                     disconnect( "Only valid xbox live accounts can join. Please login" );
-                    return true;
+                    return;
                 }
 
                 // Log xbox accounts if needed
-                this.valid = loginPacket.isValid();
-                if ( loginPacket.isValid() ) {
-                    logger.info( "Got valid XBOX Live Account ID: " + loginPacket.getXboxId() );
-                    this.xboxId = loginPacket.getXboxId();
+                if ( this.valid ) {
+                    logger.info( "Got valid XBOX Live Account ID: " + chainValidator.getXboxId() );
+                    this.xboxId = chainValidator.getXboxId();
                 }
 
                 // Check for uuid or name equals
                 for ( UpstreamConnection upstreamConnection : this.proxProx.getPlayers() ) {
-                    if ( loginPacket.getUUID().equals( upstreamConnection.getUUID() ) || loginPacket.getUserName().equals( upstreamConnection.getName() ) ) {
+                    if ( chainValidator.getUUID().equals( upstreamConnection.getUUID() ) || chainValidator.getUsername().equals( upstreamConnection.getName() ) ) {
                         disconnect( "Logged in from another location" );
-                        return true;
+                        return;
                     }
                 }
 
-                this.uuid = loginPacket.getUUID();
-                this.username = loginPacket.getUserName();
+                this.uuid = chainValidator.getUUID();
+                this.username = chainValidator.getUsername();
+
+                // Parse skin
+                byte[] skin = new byte[byteBuffer.getInt()];
+                byteBuffer.get( skin );
+
+                JwtToken skinToken = JwtToken.parse( new String( skin ) );
+
+                try {
+                    skinToken.validateSignature( JwtAlgorithm.ES384, chainValidator.getTrustedKeys().get( skinToken.getHeader().getProperty( "x5u" ) ) );
+                    this.skinData = skinToken.getClaims();
+                } catch ( JwtSignatureException e ) {
+                    e.printStackTrace();
+                }
 
                 send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
 
                 PlayerLoginEvent event = this.proxProx.getPluginManager().callEvent( new PlayerLoginEvent( this ) );
                 if ( event.isCancelled() ) {
                     disconnect( event.getDisconnectReason() );
-                    return true;
+                    return;
                 }
 
-                logger.info( "Logged in as " + loginPacket.getUserName() + " (UUID: " + loginPacket.getUUID().toString() + ")" );
+                logger.info( "Logged in as " + chainValidator.getUsername() + " (UUID: " + chainValidator.getUUID().toString() + ")" );
                 Thread.currentThread().setName( "UpStream " + getUUID() + " [Packet Read/Rewrite]" );
                 this.state = ConnectionState.CONNECTED;
 
                 this.proxProx.addPlayer( this );
 
-                // Connect to the default Server
-                this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
-                return true;
+                // We need to start encryption first
+                this.encryptionHandler = new EncryptionHandler();
+                this.encryptionHandler.supplyClientKey( chainValidator.getClientPublicKey() );
+                if ( this.encryptionHandler.beginClientsideEncryption() ) {
+                    // Forge a JWT
+                    String encryptionRequestJWT = FORGER.forge( encryptionHandler.getServerPublic(), encryptionHandler.getServerPrivate(), encryptionHandler.getClientSalt() );
 
-            case Protocol.TEXT_PACKET:
-                if ( this.state != ConnectionState.CONNECTED ) {
-                    disconnect( ChatColor.RED + "Error in handshake" );
-                    return true;
-                }
-
-                // Parse the chat packet
-                PacketText packetText = new PacketText();
-                packetText.deserialize( buffer );
-
-                // We only care for commands currently
-                // TODO: Add some sort of general chat event
-                if ( packetText.getType() == PacketText.Type.PLAYER_CHAT && packetText.getMessage().startsWith( "/" ) ) {
-                    return this.proxProx.getPluginManager().dispatchCommand( this, packetText.getMessage().substring( 1 ) );
+                    PacketEncryptionRequest packetEncryptionRequest = new PacketEncryptionRequest();
+                    packetEncryptionRequest.setJwt( encryptionRequestJWT );
+                    send( packetEncryptionRequest );
                 } else {
-                    return false;
+                    disconnect( "Error in creating AES token" );
                 }
+
+                break;
+
+            case Protocol.PACKET_ENCRYPTION_READY:
+                this.postProcessWorker.setEncryptionHandler( this.encryptionHandler );
+
+                // Send resource pack stuff
+                PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
+                packetResourcePacksInfo.setMustAccept( false );
+                packetResourcePacksInfo.setBehaviourPackEntries( new ArrayList<>() );
+                packetResourcePacksInfo.setResourcePackEntries( new ArrayList<>() );
+                send( packetResourcePacksInfo );
+
+                break;
+
+            case Protocol.PACKET_RESOURCEPACK_RESPONSE:
+                PacketResourcePackResponse resourcePackResponse = new PacketResourcePackResponse();
+                resourcePackResponse.deserialize( buffer );
+
+                switch ( resourcePackResponse.getStatus() ) {
+                    case HAVE_ALL_PACKS:
+                        PacketResourcePackStack resourcePackStack = new PacketResourcePackStack();
+                        resourcePackStack.setMustAccept( false );
+                        resourcePackStack.setBehaviourPackEntries( new ArrayList<>() );
+                        resourcePackStack.setResourcePackEntries( new ArrayList<>() );
+                        send( resourcePackStack );
+                        break;
+                    case COMPLETED:
+                        this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
+                        break;
+                }
+
+                break;
 
             default:
-                return false;
+                if ( currentDownStream != null ) {
+                    if ( currentDownStream.getEntityId() != this.entityId ) {
+                        long entityId;
+
+                        switch( packetId ) {
+                            case 0x1f:
+                            case 0x20:
+                            case 0x13:  // Move player
+                            case 0x27: // Entity metadata
+                            case 0x1B: // Entity Event
+                                entityId = buffer.readUnsignedVarLong();
+                                if ( entityId == this.entityId ) {
+                                    byte[] data = new byte[buffer.getRemaining()];
+                                    buffer.readBytes( data );
+
+                                    buffer = new PacketBuffer( 64 );
+                                    buffer.writeUnsignedVarLong( currentDownStream.getEntityId() );
+                                    buffer.writeBytes( data );
+                                    buffer.resetPosition();
+                                } else if ( entityId == currentDownStream.getEntityId() ) {
+                                    byte[] data = new byte[buffer.getRemaining()];
+                                    buffer.readBytes( data );
+
+                                    buffer = new PacketBuffer( 64 );
+                                    buffer.writeUnsignedVarLong( this.entityId );
+                                    buffer.writeBytes( data );
+                                    buffer.resetPosition();
+                                } else {
+                                    buffer.setPosition( pos );
+                                }
+
+                                break;
+
+                            case 0x2c:  // Animate
+                                int actionId = buffer.readSignedVarInt();
+                                entityId = buffer.readUnsignedVarLong();
+                                if ( entityId == this.entityId ) {
+                                    buffer = new PacketBuffer( 6 );
+                                    buffer.writeSignedVarInt( actionId );
+                                    buffer.writeUnsignedVarLong( currentDownStream.getEntityId() );
+                                    buffer.resetPosition();
+                                } else if ( entityId == currentDownStream.getEntityId() ) {
+                                    buffer = new PacketBuffer( 6 );
+                                    buffer.writeSignedVarInt( actionId );
+                                    buffer.writeUnsignedVarLong( this.entityId );
+                                    buffer.resetPosition();
+                                } else {
+                                    buffer.setPosition( pos );
+                                }
+
+                                break;
+                        }
+                    }
+
+                    currentDownStream.send( packetId, buffer );
+                }
+
+                break;
         }
     }
 
@@ -236,19 +407,25 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
     }
 
+    public void sendPlayState( PacketPlayState.PlayState state ) {
+        PacketPlayState packet = new PacketPlayState();
+        packet.setState( state );
+        this.send( packet );
+    }
+
     @Override
     public boolean isValid() {
         return this.valid;
     }
 
     @Override
-    public long getXboxId() {
+    public String getXboxId() {
         return this.xboxId;
     }
 
     @Override
     public InetSocketAddress getAddress() {
-        return (InetSocketAddress) this.connection.getAddress();
+        return this.connection.getAddress();
     }
 
     @Override
@@ -288,7 +465,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             send( new PacketChangeDimension( (byte) 1 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
 
-            move( 0, 4000, 0 );
+            move( 0, 4000, 0, 0, 0 );
             sendEmptyChunks();
 
             send( new PacketChangeDimension( (byte) 1 ) );
@@ -299,8 +476,30 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             this.currentDownStream = null;
         }
 
-        // Send login packet
-        downstreamConnection.send( this.loginPacket.getBuffer() );
+        // Send our handshake to the server -> this will trigger it to respond with a 0x03 ServerHandshake packet:
+        MojangLoginForger mojangLoginForger = new MojangLoginForger();
+        mojangLoginForger.setPublicKey( EncryptionHandler.PROXY_KEY_PAIR.getPublic() );
+        mojangLoginForger.setUsername( this.username );
+        mojangLoginForger.setUUID( this.uuid );
+        mojangLoginForger.setSkinData( this.skinData );
+
+        String jwt = "{\"chain\":[\"" + mojangLoginForger.forge( EncryptionHandler.PROXY_KEY_PAIR.getPrivate() ) + "\"]}";
+        String skin = mojangLoginForger.forgeSkin( EncryptionHandler.PROXY_KEY_PAIR.getPrivate() );
+
+        // More data please
+        ByteBuffer byteBuffer = ByteBuffer.allocate( jwt.length() + skin.length() + 8 );
+        byteBuffer.order( ByteOrder.LITTLE_ENDIAN );
+        byteBuffer.putInt( jwt.length() );
+        byteBuffer.put( jwt.getBytes() );
+
+        // We need the skin
+        byteBuffer.putInt( skin.length() );
+        byteBuffer.put( skin.getBytes() );
+
+        PacketLogin packetClientHandshake = new PacketLogin();
+        packetClientHandshake.setProtocol( 137 );
+        packetClientHandshake.setPayload( byteBuffer.array() );
+        downstreamConnection.send( packetClientHandshake );
     }
 
     private void sendEmptyChunks() {
@@ -309,19 +508,21 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 PacketFullChunkData chunk = new PacketFullChunkData();
                 chunk.setChunkX( x );
                 chunk.setChunkZ( z );
-                chunk.setChunkData( new byte[0] );
+                chunk.setChunkData( EMPTY_CHUNK.getBuffer() );
                 send( chunk );
             }
         }
     }
 
-    private void move( float x, float y, float z ) {
+    private void move( float x, float y, float z, float yaw, float pitch ) {
         PacketMovePlayer packet = new PacketMovePlayer();
-        packet.setEntityId( 0 );
+        packet.setEntityId( this.entityId );
         packet.setX( x );
         packet.setY( y + 1.62f );
         packet.setZ( z );
-        packet.setMode( (byte) 1 );
+        packet.setYaw( yaw );
+        packet.setPitch( pitch );
+        packet.setMode( (byte) 2 );
         send( packet );
     }
 
@@ -331,11 +532,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @param packet The packet which should be send
      */
     public void send( Packet packet ) {
-        PacketBuffer buffer = new PacketBuffer( packet.estimateLength() == -1 ? 64 : packet.estimateLength() + 2 );
-        buffer.writeByte( (byte) 0xFE );
-        buffer.writeByte( packet.getId() );
-        packet.serialize( buffer );
-        connection.send( PacketReliability.RELIABLE, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
+        if ( !( packet instanceof PacketBatch ) && packet.mustBeInBatch() ) {
+            this.postProcessWorker.sendPacket( packet );
+        } else {
+            PacketBuffer buffer = new PacketBuffer( 64 );
+            buffer.writeByte( packet.getId() );
+            packet.serialize( buffer );
+
+            this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
+        }
     }
 
     /**
@@ -392,12 +597,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Override
     public void sendMessage( String... messages ) {
-        for ( String message : messages ) {
+        /*for ( String message : messages ) {
             PacketText text = new PacketText();
             text.setType( PacketText.Type.CLIENT_MESSAGE );
             text.setMessage( message );
             this.send( text );
-        }
+        }*/
     }
 
     @Override
@@ -459,9 +664,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Clean up pending
         this.pendingDownStream = null;
 
-        // Take over new downstream
-        downstreamConnection.sendInit();
-
         // Send Loggedin Event on first downstram connect
         if ( this.firstServer ) {
             this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
@@ -469,10 +671,43 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         this.currentDownStream = downstreamConnection;
+
+        move( this.currentDownStream.getSpawnX(), this.currentDownStream.getSpawnY(), this.currentDownStream.getSpawnZ(),
+                this.currentDownStream.getSpawnYaw(), this.currentDownStream.getSpawnPitch() );
+
+        PacketSetDifficulty setDifficulty = new PacketSetDifficulty();
+        setDifficulty.setDifficulty( this.currentDownStream.getDifficulty() );
+        send( setDifficulty );
+
+        PacketSetGamemode gamemode = new PacketSetGamemode();
+        gamemode.setGameMode( this.currentDownStream.getGamemode() );
+        send( gamemode );
     }
 
     public void resetPendingDownStream() {
         this.pendingDownStream = null;
+    }
+
+    public void send( byte packetId, PacketBuffer buffer ) {
+        byte[] data = new byte[buffer.getRemaining()];
+        buffer.readBytes( data );
+
+        this.postProcessWorker.sendPacket( new Packet( packetId ) {
+            @Override
+            public void serialize( PacketBuffer pktBuffer ) {
+                pktBuffer.writeBytes( data );
+            }
+
+            @Override
+            public void deserialize( PacketBuffer buffer ) {
+
+            }
+
+            @Override
+            public String toString() {
+                return Integer.toHexString( packetId & 0xFF );
+            }
+        } );
     }
 
 }

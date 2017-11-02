@@ -43,8 +43,6 @@ public class EventBus {
      * @return The handled event
      */
     public <T extends Event> T post( T event ) {
-        logger.debug( "Posting event " + event.toString() );
-
         EventHandlerMethod[] handlers = byEventBaked.get( event.getClass() );
         if ( handlers != null ) {
             for ( EventHandlerMethod method : handlers ) {
@@ -53,7 +51,6 @@ public class EventBus {
                     continue;
                 }
 
-                logger.debug( "Visiting method " + method.getListener().getClass().getName() + "." + method.getMethod().getName() );
                 try {
                     method.invoke( event );
                 } catch ( IllegalAccessException ex ) {
@@ -63,7 +60,6 @@ public class EventBus {
                 } catch ( InvocationTargetException ex ) {
                     logger.warn( MessageFormat.format( "Error dispatching event {0} to listener {1}", event, method.getListener() ), ex.getCause() );
                 }
-                logger.debug( "Event after visting: " + event.toString() );
             }
         }
 

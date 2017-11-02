@@ -38,7 +38,7 @@ public class PacketAddPlayer extends Packet {
         // I only care for the entity id long
         buffer.readUUID();
         buffer.readString();
-        this.entityId = buffer.readLong();
+        this.entityId = buffer.readSignedVarLong().longValue();
     }
 
 }

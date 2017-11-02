@@ -37,10 +37,10 @@ public class PacketChangeDimension extends Packet {
 
     @Override
     public void serialize( PacketBuffer buffer ) {
-        buffer.writeByte( this.dimension );
-        buffer.writeFloat( this.x );
-        buffer.writeFloat( this.y );
-        buffer.writeFloat( this.z );
+        buffer.writeUnsignedVarInt( this.dimension );
+        buffer.writeLFloat( this.x );
+        buffer.writeLFloat( this.y );
+        buffer.writeLFloat( this.z );
         buffer.writeByte( this.unknown );
     }
 
@@ -48,4 +48,10 @@ public class PacketChangeDimension extends Packet {
     public void deserialize( PacketBuffer buffer ) {
 
     }
+
+    @Override
+    public boolean mustBeInBatch() {
+        return false;
+    }
+
 }

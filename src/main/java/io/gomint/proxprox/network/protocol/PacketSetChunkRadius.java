@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, GoMint, BlackyPaw and geNAZt
+ * Copyright (c) 2017, GoMint, BlackyPaw and geNAZt
  *
  * This code is licensed under the BSD license found in the
  * LICENSE file in the root directory of this source tree.
@@ -11,36 +11,30 @@ import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
 @Data
-public class PacketFullChunkData extends Packet {
+@EqualsAndHashCode( callSuper = false )
+public class PacketSetChunkRadius extends Packet {
 
-    private int chunkX;
-    private int chunkZ;
-    private byte[] chunkData;
+    private int chunkRadius;
 
-    /**
-     * Constructor for implemented Packets
-     */
-    public PacketFullChunkData() {
-        super( Protocol.CHUNK_DATA_PACKET );
+    public PacketSetChunkRadius() {
+        super( Protocol.PACKET_SET_CHUNK_RADIUS );
     }
 
     @Override
     public void serialize( PacketBuffer buffer ) {
-        buffer.writeSignedVarInt( this.chunkX );
-        buffer.writeSignedVarInt( this.chunkZ );
-        buffer.writeUnsignedVarInt( this.chunkData.length );
-        buffer.writeBytes( this.chunkData );
+        buffer.writeSignedVarInt( this.chunkRadius );
     }
 
     @Override
     public void deserialize( PacketBuffer buffer ) {
-
+        this.chunkRadius = buffer.readSignedVarInt();
     }
 
 }

@@ -11,6 +11,9 @@ import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
 import io.gomint.jraknet.datastructures.TriadRange;
 import io.gomint.proxprox.network.protocol.PacketBatch;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +32,7 @@ public abstract class AbstractConnection {
     private static final Logger logger = LoggerFactory.getLogger( AbstractConnection.class );
 
     protected ConnectionState state = ConnectionState.HANDSHAKE;
+    protected EncryptionHandler encryptionHandler = null;
 
     /**
      * Setup the internal structures needed for the Connection
@@ -45,17 +49,27 @@ public abstract class AbstractConnection {
      * @param orderingChannel The ordering channel of this batched packet
      * @param batch           This boolean indicated if the buffer is coming out of a batched packet or not
      */
-    protected boolean handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
+    protected void handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
         if ( batch ) {
             logger.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            return true;
+            return;
         }
 
-        int compressedSize = buffer.readInt();              // Compressed payload length (not of interest; only uncompressed size matters)
+        // Do we need to decrypt here?
+        byte[] input = new byte[buffer.getRemaining()];
+        System.arraycopy( buffer.getBuffer(), buffer.getPosition(), input, 0, input.length );
+        if ( this.encryptionHandler != null ) {
+            input = this.encryptionHandler.isEncryptionFromServerEnabled() ? this.encryptionHandler.decryptInputFromServer( input ) : this.encryptionHandler.decryptInputFromClient( input );
+            if ( input == null ) {
+                // Decryption error
+                disconnect( "Checksum of encrypted packet was wrong" );
+                return;
+            }
+        }
 
-        InflaterInputStream inflaterInputStream = new InflaterInputStream( new ByteArrayInputStream( buffer.getBuffer(), buffer.getPosition(), compressedSize ) );
+        InflaterInputStream inflaterInputStream = new InflaterInputStream( new ByteArrayInputStream( input ) );
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream( compressedSize );
+        ByteArrayOutputStream bout = new ByteArrayOutputStream( buffer.getRemaining() );
         byte[] batchIntermediate = new byte[256];
 
         try {
@@ -64,78 +78,26 @@ public abstract class AbstractConnection {
                 bout.write( batchIntermediate, 0, read );
             }
         } catch ( IOException e ) {
-            // Check if we have a debugger attached
-            if ( this instanceof UpstreamConnection ) {
-                try {
-                    ((UpstreamConnection) this).getNetworkDebugger().print( new FileOutputStream( "debug/" + System.currentTimeMillis() + ".dbg" ) );
-                } catch ( FileNotFoundException e1 ) {
-                    e1.printStackTrace();
-                }
-            }
-
             logger.error( "Failed to decompress batch packet", e );
-            return true;
+            return;
         }
 
         byte[] payload = bout.toByteArray();
 
-        boolean changed = false;
-        List<TriadRange> skipBytes = null;
         PacketBuffer payloadBuffer = new PacketBuffer( payload, 0 );
         while ( payloadBuffer.getRemaining() > 0 ) {
-            int beforePosition = payloadBuffer.getPosition();
-            int packetLength = payloadBuffer.readInt();
-            int expectedPosition = payloadBuffer.getPosition() + packetLength;
+            int packetLength = payloadBuffer.readUnsignedVarInt();
 
-            if ( handlePacket( payloadBuffer, reliability, orderingChannel, true ) ) {
-                if ( skipBytes == null ) {
-                    skipBytes = new ArrayList<>();
-                }
+            byte[] payData = new byte[packetLength];
+            payloadBuffer.readBytes( payData );
+            PacketBuffer pktBuf = new PacketBuffer( payData, 0 );
+            this.handlePacket( pktBuf, reliability, orderingChannel, true );
 
-                skipBytes.add( new TriadRange( beforePosition, expectedPosition ) );
-                changed = true;
+            if ( pktBuf.getRemaining() > 0 ) {
+                logger.error( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x" +
+                        Integer.toHexString( payData[0] ) + " remaining " + pktBuf.getRemaining() + " bytes" );
+                return;
             }
-
-            payloadBuffer.skip( expectedPosition - payloadBuffer.getPosition() );
-        }
-
-        // Do we need to rebatch?
-        if ( !changed ) {
-            return false;
-        } else {
-            // Check how many bytes we skipped
-            int skipped = 0;
-            for ( TriadRange skipByte : skipBytes ) {
-                skipped += skipByte.getMax() - skipByte.getMin();
-            }
-
-            // Do we have data?
-            if ( skipped == payload.length ) {
-                return true;
-            }
-
-            // New combined bytes
-            byte[] newbytes = new byte[payload.length - skipped];
-            int startByte = 0;
-            int currentPos = 0;
-            for ( TriadRange skipByte : skipBytes ) {
-                System.arraycopy( payload, startByte, newbytes, currentPos, skipByte.getMin() - startByte );
-                currentPos += skipByte.getMin() - startByte;
-                startByte = skipByte.getMax();
-            }
-
-            // There is data to rebatch
-            byte[] newBatchContent = batch( newbytes );
-            PacketBatch packetBatch = new PacketBatch();
-            packetBatch.setPayload( newBatchContent );
-
-            PacketBuffer packetBuffer = new PacketBuffer( packetBatch.estimateLength() + 2 );
-            packetBuffer.writeByte( (byte) 0xFE );
-            packetBuffer.writeByte( packetBatch.getId() );
-            packetBatch.serialize( buffer );
-
-            announceRewrite( reliability, orderingChannel, buffer.getBuffer() );
-            return true;
         }
     }
 
@@ -155,24 +117,32 @@ public abstract class AbstractConnection {
     }
 
     /**
-     * If the internal batch packet wants to redirect inner packets
-     *
-     * @param reliability     How reliable must the packet be rewriten?
-     * @param orderingChannel The ordering channel in which we want to rewrite
-     * @param batch           The packet which should be redirected
-     */
-    protected abstract void announceRewrite( PacketReliability reliability, int orderingChannel, byte[] batch );
-
-    /**
      * Little internal handler for packets
      *
      * @param buffer          The buffer which holds the packet
      * @param reliability     The reliability of the packet
      * @param orderingChannel The ordering channel from which this data comes
      * @param batched         Boolean indicating if buffer is coming out of a batched packet
-     * @return false when we want to send it to the downstream, true if we consume it
      */
-    protected abstract boolean handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched );
+    protected abstract void handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched );
+
+    public abstract void disconnect( String message );
+
+    /**
+     * Parses the specified JSON string and ensures it is a JSONObject.
+     *
+     * @param jwt The string to parse
+     * @return The parsed JSON object on success
+     * @throws ParseException Thrown if the given JSON string is invalid or does not start with a JSONObject
+     */
+    protected JSONObject parseJwtString( String jwt ) throws ParseException {
+        Object jsonParsed = new JSONParser().parse( jwt );
+        if ( jsonParsed instanceof JSONObject ) {
+            return (JSONObject) jsonParsed;
+        } else {
+            throw new ParseException( ParseException.ERROR_UNEXPECTED_TOKEN );
+        }
+    }
 
     protected enum ConnectionState {
         HANDSHAKE,
