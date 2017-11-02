@@ -7,10 +7,7 @@
 
 package io.gomint.proxprox;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -99,44 +96,44 @@ public class Bootstrap {
             return;
         }
 
-        File dependencyFile = new File( "libs.dep" );
-
-        // Checks for the 'libs.dep' file in the root folder where the jar runs.
-        // If the 'libs.dep' file does not exists the reader uses the copy from the resources directory
-        if ( dependencyFile.exists() ) {
-            // Load the dependency list
-            try ( BufferedReader reader = new BufferedReader( new FileReader( dependencyFile ) ) ) {
-                String dependency;
-                while ( ( dependency = reader.readLine() ) != null ) {
-                    // Check for comment
-                    if ( dependency.isEmpty() || dependency.equals( System.getProperty( "line.separator" ) ) || dependency.startsWith( "#" ) ) {
-                        continue;
-                    }
-
-                    downloadLibraryFile( libsFolder, dependency);
+        try ( BufferedReader reader = new BufferedReader( new InputStreamReader( Bootstrap.class.getResourceAsStream( "/libs.dep" ) ) ) ) {
+            String libURL;
+            while ( ( libURL = reader.readLine() ) != null ) {
+                // Check for comment
+                if ( libURL.isEmpty() || libURL.equals( System.getProperty( "line.separator" ) ) || libURL.startsWith( "#" ) ) {
+                    continue;
                 }
-            } catch ( IOException e ) {
-                e.printStackTrace();
-            }
-        } else {
-            try {
-                URI dependenciesURI = ClassLoader.getSystemResource( "libs.dep" ).toURI();
-                Map<String, String> environment = new HashMap<>();
-                environment.put( "create", "true" );
 
-                // Create a new file system, which does not automatically happens
-                FileSystems.newFileSystem( dependenciesURI, environment );
+                // Head first to get informations about the file
+                URL url = new URL( libURL );
+                HttpURLConnection urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod( "HEAD" );
 
-                for ( String dependency : Files.readAllLines( Paths.get( dependenciesURI ) ) ) {
-                    if ( dependency.isEmpty() || dependency.equals( System.getProperty( "line.separator" ) ) || dependency.startsWith( "#" ) ) {
-                        continue;
-                    }
-
-                    downloadLibraryFile( libsFolder, dependency);
+                // Filter out non java archive content types
+                if ( !"application/java-archive".equals( urlConnection.getHeaderField( "Content-Type" ) ) ) {
+                    System.out.println( "Skipping the download of " + libURL + " because its not a Java Archive" );
+                    continue;
                 }
-            } catch ( URISyntaxException | IOException e ) {
-                e.printStackTrace();
+
+                // We need the contentLength to compare
+                int contentLength = Integer.parseInt( urlConnection.getHeaderField( "Content-Length" ) );
+
+                String[] tempSplit = url.getPath().split( "/" );
+                String fileName = tempSplit[tempSplit.length - 1];
+
+                // Check if we have a file with the same length
+                File libFile = new File( libsFolder, fileName );
+                if ( libFile.exists() && libFile.length() == contentLength ) {
+                    System.out.println( "Skipping the download of " + libURL + " because there already is a correct sized copy" );
+                    continue;
+                }
+
+                // Download the file from the Server
+                Files.copy( url.openStream(), libFile.toPath(), StandardCopyOption.REPLACE_EXISTING );
+                System.out.println( "Downloading library: " + fileName );
             }
+        } catch ( Exception e ) {
+            e.printStackTrace();
         }
     }
 
