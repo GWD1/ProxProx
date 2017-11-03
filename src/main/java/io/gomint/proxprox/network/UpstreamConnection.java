@@ -704,4 +704,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         } );
     }
 
+    public boolean isConnected() {
+        return this.connection.isConnected();
+    }
+
 }

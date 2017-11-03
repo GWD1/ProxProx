@@ -8,11 +8,14 @@
 package io.gomint.proxprox.config;
 
 import com.blackypaw.simpleconfig.SimpleConfig;
+import com.blackypaw.simpleconfig.annotation.Comment;
+import lombok.Data;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
+@Data
 public class ProxyConfig extends SimpleConfig {
 
     private String ip = "0.0.0.0";
@@ -24,56 +27,7 @@ public class ProxyConfig extends SimpleConfig {
     // in general is not valid (certification issues)
     private boolean onlineMode = false;
 
-    /**
-     * Get the IP which should be used to bind to for incoming Upstream (User) Connections
-     *
-     * @return IP to bind to
-     */
-    public String getIp() {
-        return ip;
-    }
-
-    /**
-     * Override method for CLI Argument --ip
-     *
-     * @param ip The IP which should be used instead of the one in the config
-     */
-    public void setIp( String ip ) {
-        this.ip = ip;
-    }
-
-    /**
-     * Get the port (default 19132) which should be used to bind for accepting user connections
-     *
-     * @return Port to bind to
-     */
-    public int getPort() {
-        return port;
-    }
-
-    /**
-     * Override method for CLI Argument --port
-     *
-     * @param port The port which should be used instead of the one given in the config
-     */
-    public void setPort( int port ) {
-        this.port = port;
-    }
-
-    /**
-     * Get the config for the default server
-     *
-     * @return IP and Port to connect to the default server
-     */
-    public ServerConfig getDefaultServer() {
-        return this.defaultServer;
-    }
-
-    /**
-     * Are we in online mode or not?
-     */
-    public boolean isOnlineMode() {
-        return this.onlineMode;
-    }
+    @Comment("Gomint servers can use TCP listeners instead of Raknet to safe additional network delay and encryption overheads")
+    private boolean useTCP = true;
 
 }

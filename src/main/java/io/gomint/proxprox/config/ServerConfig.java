@@ -9,6 +9,7 @@ package io.gomint.proxprox.config;
 
 import com.blackypaw.simpleconfig.SimpleConfig;
 import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -16,7 +17,7 @@ import lombok.NoArgsConstructor;
  * @author geNAZt
  * @version 1.0
  */
-@Getter
+@Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class ServerConfig extends SimpleConfig {

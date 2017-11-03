@@ -9,6 +9,7 @@ package io.gomint.proxprox.network;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.*;
+import io.gomint.proxprox.Bootstrap;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
@@ -19,6 +20,10 @@ import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
 import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
+import io.gomint.proxprox.network.tcp.ConnectionHandler;
+import io.gomint.proxprox.network.tcp.Initializer;
+import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
+import io.gomint.proxprox.util.DumpUtil;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -27,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import java.net.SocketException;
 import java.security.Key;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * @author geNAZt
@@ -47,6 +53,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private boolean manualClose = true;
     private PostProcessWorker postProcessWorker;
     private boolean isFirst = true;
+    private ConnectionHandler tcpConnection;
 
     // Upstream
     private UpstreamConnection upstreamConnection;
@@ -88,57 +95,105 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         this.ip = ip;
         this.port = port;
 
-        this.connection = new ClientSocket();
-        this.connection.setMojangModificationEnabled( true );
-        this.connection.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "DownStream " + this.upstreamConnection.getUUID() + " -> " + this.ip + ":" + this.port ).build() );
-        this.connection.setEventHandler( new SocketEventHandler() {
-            @Override
-            public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                logger.debug( "Got socketEvent: " + socketEvent.getType().name() );
-                switch ( socketEvent.getType() ) {
-                    case CONNECTION_ATTEMPT_SUCCEEDED:
-                        // We got accepted *yay*
-                        DownstreamConnection.this.setup();
+        // Check if we use UDP or TCP for downstream connections
+        if ( proxProx.getConfig().isUseTCP() ) {
+            try {
+                io.netty.bootstrap.Bootstrap bootstrap = Initializer.buildBootstrap( "DownStream " + this.upstreamConnection.getUUID() + " -> " + this.ip + ":" + this.port, new Consumer<ConnectionHandler>() {
+                    @Override
+                    public void accept( ConnectionHandler connectionHandler ) {
+                        DownstreamConnection.this.tcpConnection = connectionHandler;
                         DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
-                        break;
 
-                    case CONNECTION_CLOSED:
-                    case CONNECTION_DISCONNECTED:
-                        logger.info( "Disconnected downstream..." );
-                        DownstreamConnection.this.manualClose = false;
-                        DownstreamConnection.this.close();
-
-                        // Check if we need to disconnect upstream
-                        if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
-                            if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                                return;
-                            } else {
-                                upstreamConnection.disconnect( "The Server has gone down" );
+                        connectionHandler.onData( new Consumer<PacketBuffer>() {
+                            @Override
+                            public void accept( PacketBuffer buffer ) {
+                                handlePacket( buffer, PacketReliability.RELIABLE_ORDERED, 0, true ); // There are no batches in TCP
                             }
-                        } else {
-                            upstreamConnection.resetPendingDownStream();
-                        }
+                        } );
 
-                        break;
+                        connectionHandler.whenDisconnected( new Consumer<Void>() {
+                            @Override
+                            public void accept( Void aVoid ) {
+                                if ( upstreamConnection.isConnected() ) {
+                                    logger.info( "Disconnected downstream..." );
+                                    DownstreamConnection.this.manualClose = false;
+                                    DownstreamConnection.this.close();
 
-                    default:
-                        break;
-                }
+                                    // Check if we need to disconnect upstream
+                                    if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                        if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                            return;
+                                        } else {
+                                            upstreamConnection.disconnect( "The Server has gone down" );
+                                        }
+                                    } else {
+                                        upstreamConnection.resetPendingDownStream();
+                                    }
+                                }
+                            }
+                        } );
+                    }
+                } );
+                bootstrap.connect( this.ip, this.port ).sync();
+            } catch ( InterruptedException e ) {
+                e.printStackTrace();
+                this.upstreamConnection.resetPendingDownStream();
             }
-        } );
+        } else {
+            this.connection = new ClientSocket();
+            this.connection.setMojangModificationEnabled( true );
+            this.connection.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "DownStream " + this.upstreamConnection.getUUID() + " -> " + this.ip + ":" + this.port ).build() );
+            this.connection.setEventHandler( new SocketEventHandler() {
+                @Override
+                public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
+                    logger.debug( "Got socketEvent: " + socketEvent.getType().name() );
+                    switch ( socketEvent.getType() ) {
+                        case CONNECTION_ATTEMPT_SUCCEEDED:
+                            // We got accepted *yay*
+                            DownstreamConnection.this.setup();
+                            DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
+                            break;
 
-        try {
-            this.connection.initialize();
-        } catch ( SocketException e ) {
-            e.printStackTrace();
+                        case CONNECTION_CLOSED:
+                        case CONNECTION_DISCONNECTED:
+                            logger.info( "Disconnected downstream..." );
+                            DownstreamConnection.this.manualClose = false;
+                            DownstreamConnection.this.close();
+
+                            // Check if we need to disconnect upstream
+                            if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                    return;
+                                } else {
+                                    upstreamConnection.disconnect( "The Server has gone down" );
+                                }
+                            } else {
+                                upstreamConnection.resetPendingDownStream();
+                            }
+
+                            break;
+
+                        default:
+                            break;
+                    }
+                }
+            } );
+
+            try {
+                this.connection.initialize();
+            } catch ( SocketException e ) {
+                e.printStackTrace();
+            }
+
+            this.connection.connect( ip, port );
         }
-
-        this.connection.connect( ip, port );
     }
 
     @Override
     protected void setup() {
         super.setup();
+
+        new Exception().printStackTrace();
 
         this.postProcessWorker = new PostProcessWorker( this.getConnection() );
         this.connectionReadThread = this.proxProx.getNewServerConnectionThread( new Runnable() {
@@ -373,7 +428,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         case 0x13:  // Move player
                         case 0x1B:  // Entity event
                         case 0x27:  // Entity metadata
-                        case 0x1D: // Update attributes
+                        case 0x1D:  // Update attributes
                             entityId = buffer.readUnsignedVarLong();
                             if ( entityId == this.entityId ) {
                                 byte[] data = new byte[buffer.getRemaining()];
@@ -408,6 +463,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
      * Close the connection to the underlying RakNet Server
      */
     public void close() {
+        if ( this.tcpConnection != null ) {
+            this.tcpConnection.disconnect();
+        }
+
         if ( this.connection != null ) {
             this.connection.close();
         }
@@ -417,29 +476,14 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         }
     }
 
-    public void send( byte packetId, PacketBuffer buffer ) {
-        byte[] data = new byte[buffer.getRemaining()];
-        buffer.readBytes( data );
-
-        this.postProcessWorker.sendPacket( new Packet( packetId ) {
-            @Override
-            public void serialize( PacketBuffer pktBuffer ) {
-                pktBuffer.writeBytes( data );
-            }
-
-            @Override
-            public void deserialize( PacketBuffer buffer ) {
-
-            }
-        } );
-    }
-
     public void disconnect( String reason ) {
-        if ( this.connection.getConnection() != null ) {
+        if ( this.connection != null && this.connection.getConnection() != null ) {
             logger.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
             this.connection.getConnection().disconnect( reason );
             this.connection.close();
+        } else if ( this.tcpConnection != null ) {
+            this.tcpConnection.disconnect();
         }
     }
 
@@ -473,18 +517,58 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     @Override
     public void send( Packet packet ) {
-        if ( this.connection == null || this.getConnection() == null ) {
-            return;
-        }
-
-        if ( !( packet instanceof PacketBatch ) ) {
-            this.postProcessWorker.sendPacket( packet );
-        } else {
+        // Do we send via TCP or UDP?
+        if ( this.tcpConnection != null ) {
             PacketBuffer buffer = new PacketBuffer( 64 );
             buffer.writeByte( packet.getId() );
+            buffer.writeShort( (short) 0 );
             packet.serialize( buffer );
 
-            this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
+            WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
+            mcpePacket.setBuffer( buffer );
+            this.tcpConnection.send( mcpePacket );
+        } else if ( this.connection != null ) {
+            if ( !( packet instanceof PacketBatch ) ) {
+                this.postProcessWorker.sendPacket( packet );
+            } else {
+                PacketBuffer buffer = new PacketBuffer( 64 );
+                buffer.writeByte( packet.getId() );
+                packet.serialize( buffer );
+
+                this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
+            }
+        }
+    }
+
+    public void send( byte packetId, PacketBuffer buffer ) {
+        if ( this.tcpConnection != null ) {
+            PacketBuffer newBuffer = new PacketBuffer( 64 );
+            newBuffer.writeByte( packetId );
+            newBuffer.writeShort( (short) 0 );
+
+            byte[] data = new byte[buffer.getRemaining()];
+            buffer.readBytes( data );
+
+            newBuffer.writeBytes( data );
+
+            WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
+            mcpePacket.setBuffer( newBuffer );
+            this.tcpConnection.send( mcpePacket );
+        } else {
+            byte[] data = new byte[buffer.getRemaining()];
+            buffer.readBytes( data );
+
+            this.postProcessWorker.sendPacket( new Packet( packetId ) {
+                @Override
+                public void serialize( PacketBuffer pktBuffer ) {
+                    pktBuffer.writeBytes( data );
+                }
+
+                @Override
+                public void deserialize( PacketBuffer buffer ) {
+
+                }
+            } );
         }
     }
 

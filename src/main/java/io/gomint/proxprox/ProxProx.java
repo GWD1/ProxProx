@@ -20,6 +20,7 @@ import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
 import io.gomint.proxprox.scheduler.SyncTaskManager;
 import io.gomint.proxprox.commands.*;
+import io.netty.util.ResourceLeakDetector;
 import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +99,10 @@ public class ProxProx implements Proxy {
 
         logger.info( "Starting ProxProx v1.0.0" );
         Security.addProvider( new org.bouncycastle.jce.provider.BouncyCastleProvider() );
+
+        System.setProperty( "java.net.preferIPv4Stack", "true" );               // We currently don't use ipv6
+        System.setProperty( "io.netty.selectorAutoRebuildThreshold", "0" );     // Never rebuild selectors
+        ResourceLeakDetector.setLevel( ResourceLeakDetector.Level.DISABLED );   // Eats performance
 
         // ------------------------------------ //
         // Executor Initialization
