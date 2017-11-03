@@ -477,8 +477,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         MojangLoginForger mojangLoginForger = new MojangLoginForger();
         mojangLoginForger.setPublicKey( EncryptionHandler.PROXY_KEY_PAIR.getPublic() );
         mojangLoginForger.setUsername( this.username );
-        mojangLoginForger.setUUID( this.uuid );
+        mojangLoginForger.setUuid( this.uuid );
         mojangLoginForger.setSkinData( this.skinData );
+        mojangLoginForger.setXuid( this.xboxId );
 
         String jwt = "{\"chain\":[\"" + mojangLoginForger.forge( EncryptionHandler.PROXY_KEY_PAIR.getPrivate() ) + "\"]}";
         String skin = mojangLoginForger.forgeSkin( EncryptionHandler.PROXY_KEY_PAIR.getPrivate() );

@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox.jwt;
 
+import lombok.Setter;
 import org.json.simple.JSONObject;
 
 import java.nio.charset.StandardCharsets;
@@ -21,24 +22,14 @@ import java.util.UUID;
  * @author BlackyPaw
  * @version 1.0
  */
+@Setter
 public class MojangLoginForger {
 
     private String username;
     private UUID uuid;
     private PublicKey publicKey;
     private JSONObject skinData;
-
-    public void setUsername( String username ) {
-        this.username = username;
-    }
-
-    public void setUUID( UUID uuid ) {
-        this.uuid = uuid;
-    }
-
-    public void setPublicKey( PublicKey publicKey ) {
-        this.publicKey = publicKey;
-    }
+    private String xuid;
 
     @SuppressWarnings( "unchecked" )
     public String forge( PrivateKey privateKey ) {
@@ -67,6 +58,7 @@ public class MojangLoginForger {
         JSONObject extraData = new JSONObject();
         extraData.put( "displayName", this.username );
         extraData.put( "identity", this.uuid.toString() );
+        extraData.put( "proxprox.xuid", this.xuid );
 
         claims.put( "extraData", extraData );
         claims.put( "identityPublicKey", publicKeyBase64 );
