@@ -458,21 +458,19 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 send( new PacketRemoveEntity( eID ) );
             }
 
-            /*// Loading screen (holy did this take long to figure out :D)
+            // Loading screen (holy did this take long to figure out :D)
             send( new PacketChangeDimension( (byte) 0 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
             send( new PacketChangeDimension( (byte) 1 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
 
-
+            move( 0, 4000, 0, 0, 0 );
+            sendEmptyChunks();
 
             send( new PacketChangeDimension( (byte) 1 ) );
             send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
             send( new PacketChangeDimension( (byte) 0 ) );
             // There needs to be one additional spawn but the downstream server sends one so its ok
-*/
-            move( 0, 4000, 0, 0, 0 );
-            sendEmptyChunks();
 
             this.currentDownStream = null;
         }
