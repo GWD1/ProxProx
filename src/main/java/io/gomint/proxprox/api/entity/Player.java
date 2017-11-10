@@ -11,6 +11,7 @@ import io.gomint.proxprox.api.command.CommandSender;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -37,5 +38,9 @@ public interface Player extends CommandSender {
     void setMetaData( String key, Object data );
 
     long getPing();
+
+    Locale getLocale();
+
+    void kick( String reason );
 
 }

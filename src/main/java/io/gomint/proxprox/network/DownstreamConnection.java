@@ -370,21 +370,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
                     setChunkRadius.setChunkRadius( upstreamConnection.getViewDistance() );
                     send( setChunkRadius );
-
-                    if ( port != 19133 ) {
-                        new Thread( new Runnable() {
-                            @Override
-                            public void run() {
-                                try {
-                                    Thread.sleep( 500 );
-                                } catch ( InterruptedException e ) {
-                                    e.printStackTrace();
-                                }
-
-                                upstreamConnection.connect( "127.0.0.1", 19133 );
-                            }
-                        } ).start();
-                    }
                 }
 
                 break;

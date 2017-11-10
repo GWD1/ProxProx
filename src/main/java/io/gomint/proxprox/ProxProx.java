@@ -12,6 +12,7 @@ import io.gomint.jraknet.ServerSocket;
 import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
 import io.gomint.proxprox.api.entity.Player;
+import io.gomint.proxprox.api.event.PlayerQuitEvent;
 import io.gomint.proxprox.config.ProxyConfig;
 import io.gomint.proxprox.network.CustomProtocolChannels;
 import io.gomint.proxprox.network.EncryptionKeyFactory;
@@ -321,6 +322,9 @@ public class ProxProx implements Proxy {
 
     public void removePlayer( UpstreamConnection upstreamConnection ) {
         this.players.remove( upstreamConnection.getUUID() );
+
+        PlayerQuitEvent quitEvent = new PlayerQuitEvent( upstreamConnection );
+        pluginManager.callEvent( quitEvent );
     }
 
     /**

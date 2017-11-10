@@ -23,6 +23,7 @@ import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.json.simple.JSONArray;
@@ -44,6 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author geNAZt
  * @version 1.0
  */
+@EqualsAndHashCode( of = { "uuid" }, callSuper = false )
 public class UpstreamConnection extends AbstractConnection implements Player {
 
     private static final PacketBuffer EMPTY_CHUNK = new PacketBuffer( 1 + ( 16 * 16 * 2 ) + ( 16 * 16 ) + 2 );
@@ -69,6 +71,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Setter @Getter
     private long entityId = -1;
+    private int protocolVersion;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
@@ -171,6 +174,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 packet.deserialize( buffer );
 
                 // Check versions
+                protocolVersion = packet.getProtocol();
                 logger.debug( "Trying to login with protocol version: " + packet.getProtocol() );
                 if ( packet.getProtocol() != Protocol.MINECRAFT_PE_PROTOCOL_VERSION
                         && packet.getProtocol() != Protocol.MINECRAFT_PE_BETA_PROTOCOL_VERSION ) {
@@ -495,7 +499,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         byteBuffer.put( skin.getBytes() );
 
         PacketLogin packetClientHandshake = new PacketLogin();
-        packetClientHandshake.setProtocol( 137 );
+        packetClientHandshake.setProtocol( protocolVersion );
         packetClientHandshake.setPayload( byteBuffer.array() );
         downstreamConnection.send( packetClientHandshake );
     }
@@ -621,7 +625,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Override
     public Locale getLocale() {
-        return Locale.ENGLISH;
+        return this.skinData.containsKey( "LanguageCode" ) ?
+                Locale.forLanguageTag( (String) this.skinData.get( "LanguageCode" ) ) :
+                Locale.ENGLISH;
+    }
+
+    @Override
+    public void kick( String reason ) {
+        disconnect( reason );
     }
 
     @Override
