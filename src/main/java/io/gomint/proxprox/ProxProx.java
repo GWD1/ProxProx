@@ -84,7 +84,7 @@ public class ProxProx implements Proxy {
     private PluginManager pluginManager;
 
     // Player maps
-    private Map<UUID, UpstreamConnection> players = new ConcurrentHashMap<>();
+    private Map<UUID, Player> players = new ConcurrentHashMap<>();
 
     // Custom networking
     private CustomProtocolChannels networkChannels;
@@ -336,7 +336,8 @@ public class ProxProx implements Proxy {
         return config;
     }
 
-    public Collection<UpstreamConnection> getPlayers() {
+    @Override
+    public Collection<Player> getPlayers() {
         return players.values();
     }
 

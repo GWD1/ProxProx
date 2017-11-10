@@ -31,6 +31,7 @@ public class Protocol {
     public static final byte PACKET_RESOURCEPACK_INFO = (byte) 0x06;
     public static final byte PACKET_RESOURCEPACK_STACK = (byte) 0x07;
     public static final byte PACKET_RESOURCEPACK_RESPONSE = (byte) 0x08;
+    public static final byte PACKET_TEXT = (byte) 0x09;
     public static final byte PACKET_START_GAME = (byte) 0x0b;
 
     /**

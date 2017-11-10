@@ -10,6 +10,8 @@ package io.gomint.proxprox;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.network.NetworkChannels;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -34,6 +36,8 @@ public interface Proxy {
      * @return The player or null when not found
      */
     Player getPlayer( UUID uuid );
+
+    Collection<Player> getPlayers();
 
     NetworkChannels getNetworkChannels();
 

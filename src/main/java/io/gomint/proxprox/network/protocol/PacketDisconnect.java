@@ -19,6 +19,7 @@ import lombok.Getter;
 @Getter
 public class PacketDisconnect extends Packet {
 
+    private boolean hideDisconnectScreen = false;
     private String message;
 
     /**
@@ -35,11 +36,13 @@ public class PacketDisconnect extends Packet {
 
     @Override
     public void serialize( PacketBuffer buffer ) {
+        buffer.writeBoolean( this.hideDisconnectScreen );
         buffer.writeString( this.message );
     }
 
     @Override
     public void deserialize( PacketBuffer buffer ) {
+        this.hideDisconnectScreen = buffer.readBoolean();
         this.message = buffer.readString();
     }
 

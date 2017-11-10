@@ -240,7 +240,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 }
 
                 // Check for uuid or name equals
-                for ( UpstreamConnection upstreamConnection : this.proxProx.getPlayers() ) {
+                for ( Player upstreamConnection : this.proxProx.getPlayers() ) {
                     if ( chainValidator.getUUID().equals( upstreamConnection.getUUID() ) || chainValidator.getUsername().equals( upstreamConnection.getName() ) ) {
                         disconnect( "Logged in from another location" );
                         return;
@@ -599,12 +599,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Override
     public void sendMessage( String... messages ) {
-        /*for ( String message : messages ) {
+        for ( String message : messages ) {
             PacketText text = new PacketText();
             text.setType( PacketText.Type.CLIENT_MESSAGE );
             text.setMessage( message );
             this.send( text );
-        }*/
+        }
     }
 
     @Override
