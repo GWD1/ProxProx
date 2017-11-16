@@ -13,9 +13,9 @@ package io.gomint.proxprox.network;
  */
 public class Protocol {
 
-    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = 140;
+    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = 141;
     public static final int MINECRAFT_PE_PROTOCOL_VERSION = 137;
-    public static final String MINECRAFT_PE_NETWORK_VERSION = "1.2.6.2";
+    public static final String MINECRAFT_PE_NETWORK_VERSION = "1.2.5.15";
 
     /**
      * Packet ID of the login packet
@@ -63,6 +63,7 @@ public class Protocol {
      * Packet ID for Entity Remove
      */
     public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0e;
+    public static final byte ADD_ITEM_ENTITY = (byte) 0x0f;
 
     /**
      * Packet ID for Chunk data

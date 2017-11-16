@@ -23,6 +23,7 @@ import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -69,8 +70,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private String xboxId;
     private JSONObject skinData;
 
-    @Setter @Getter
-    private long entityId = -1;
+    @Setter
+    @Getter
+    private EntityRewriter entityRewriter;
     private int protocolVersion;
 
     // Last known good server
@@ -95,7 +97,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         super();
         this.proxProx = proxProx;
         this.connection = connection;
-
 
         logger.info( "New upstream connection for " + connection.getAddress().toString() + " (GUID: " + connection.getGuid() + ")" );
 
@@ -325,61 +326,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 break;
 
             default:
-                if ( currentDownStream != null ) {
-                    if ( currentDownStream.getEntityId() != this.entityId ) {
-                        long entityId;
-
-                        switch( packetId ) {
-                            case 0x1f:
-                            case 0x20:
-                            case 0x13:  // Move player
-                            case 0x27: // Entity metadata
-                            case 0x1B: // Entity Event
-                                entityId = buffer.readUnsignedVarLong();
-                                if ( entityId == this.entityId ) {
-                                    byte[] data = new byte[buffer.getRemaining()];
-                                    buffer.readBytes( data );
-
-                                    buffer = new PacketBuffer( 8 );
-                                    buffer.writeUnsignedVarLong( currentDownStream.getEntityId() );
-                                    buffer.writeBytes( data );
-                                    buffer.resetPosition();
-                                } else if ( entityId == currentDownStream.getEntityId() ) {
-                                    byte[] data = new byte[buffer.getRemaining()];
-                                    buffer.readBytes( data );
-
-                                    buffer = new PacketBuffer( 8 );
-                                    buffer.writeUnsignedVarLong( this.entityId );
-                                    buffer.writeBytes( data );
-                                    buffer.resetPosition();
-                                } else {
-                                    buffer.setPosition( pos );
-                                }
-
-                                break;
-
-                            case 0x2c:  // Animate
-                                int actionId = buffer.readSignedVarInt();
-                                entityId = buffer.readUnsignedVarLong();
-                                if ( entityId == this.entityId ) {
-                                    buffer = new PacketBuffer( 6 );
-                                    buffer.writeSignedVarInt( actionId );
-                                    buffer.writeUnsignedVarLong( currentDownStream.getEntityId() );
-                                    buffer.resetPosition();
-                                } else if ( entityId == currentDownStream.getEntityId() ) {
-                                    buffer = new PacketBuffer( 6 );
-                                    buffer.writeSignedVarInt( actionId );
-                                    buffer.writeUnsignedVarLong( this.entityId );
-                                    buffer.resetPosition();
-                                } else {
-                                    buffer.setPosition( pos );
-                                }
-
-                                break;
-                        }
+                if ( this.currentDownStream != null ) {
+                    if ( this.entityRewriter.getCurrentDownStreamId() != this.entityRewriter.getOwnId() ) {
+                        buffer = this.entityRewriter.rewriteClientToServer( packetId, pos, buffer );
                     }
 
-                    currentDownStream.send( packetId, buffer );
+                    this.currentDownStream.send( packetId, buffer );
                 }
 
                 break;
@@ -399,7 +351,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Check if we have a pending connection
         if ( this.pendingDownStream != null ) {
             // Disconnect
-            this.pendingDownStream.close();
+            this.pendingDownStream.close( false );
             this.pendingDownStream = null;
         }
 
@@ -451,7 +403,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Close old connection and store new one
         if ( this.currentDownStream != null ) {
             this.lastKnownServer = new ServerDataHolder( this.currentDownStream.getIP(), this.currentDownStream.getPort() );
-            this.currentDownStream.close();
+            this.currentDownStream.close( false );
 
             // Cleanup all entities
             for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
@@ -516,7 +468,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     public void move( float x, float y, float z, float yaw, float pitch ) {
         PacketMovePlayer packet = new PacketMovePlayer();
-        packet.setEntityId( this.entityId );
+        packet.setEntityId( this.entityRewriter.getOwnId() );
         packet.setX( x );
         packet.setY( y + 1.62f );
         packet.setZ( z );

@@ -11,35 +11,27 @@ import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
 import lombok.Data;
-import lombok.Getter;
-
-import java.util.UUID;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
 @Data
-public class PacketAddPlayer extends Packet {
-
-    private UUID uuid;
-    private String name;
+public class PacketAddItem extends Packet {
 
     private long entityId;
 
     private byte[] data;
 
     /**
-     * Constructor for implemented Packet Add Player
+     * Constructor for implemented Packet AddEntity
      */
-    public PacketAddPlayer() {
-        super( Protocol.ADD_PLAYER_PACKET );
+    public PacketAddItem() {
+        super( Protocol.ADD_ITEM_ENTITY );
     }
 
     @Override
     public void serialize( PacketBuffer buffer ) {
-        buffer.writeUUID( this.uuid );
-        buffer.writeString( this.name );
         buffer.writeSignedVarLong( this.entityId );
         buffer.writeUnsignedVarLong( this.entityId );
 
@@ -48,9 +40,6 @@ public class PacketAddPlayer extends Packet {
 
     @Override
     public void deserialize( PacketBuffer buffer ) {
-        // I only care for the entity id long
-        this.uuid = buffer.readUUID();
-        this.name = buffer.readString();
         this.entityId = buffer.readSignedVarLong().longValue();
         buffer.readUnsignedVarLong();
 

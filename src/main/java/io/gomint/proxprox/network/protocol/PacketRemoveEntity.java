@@ -10,13 +10,14 @@ package io.gomint.proxprox.network.protocol;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
+import lombok.Data;
 import lombok.Getter;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
-@Getter
+@Data
 public class PacketRemoveEntity extends Packet {
 
     private long entityId;

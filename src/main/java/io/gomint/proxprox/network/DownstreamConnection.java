@@ -9,10 +9,10 @@ package io.gomint.proxprox.network;
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.*;
-import io.gomint.proxprox.Bootstrap;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
+import io.gomint.proxprox.api.event.ServerKickedPlayerEvent;
 import io.gomint.proxprox.api.network.Channel;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.api.network.PacketSender;
@@ -23,7 +23,7 @@ import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
-import io.gomint.proxprox.util.DumpUtil;
+import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -50,10 +50,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     // Client connection
     private ClientSocket connection;
     private Thread connectionReadThread;
-    private boolean manualClose = true;
     private PostProcessWorker postProcessWorker;
     private boolean isFirst = true;
     private ConnectionHandler tcpConnection;
+    private boolean manualClose;
 
     // Upstream
     private UpstreamConnection upstreamConnection;
@@ -62,9 +62,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private ProxProx proxProx;
 
     // Entities
-    private Set<Long> spawnedEntities = new HashSet<>();
-    @Getter
     private long entityId;
+    private Set<Long> spawnedEntities = new HashSet<>();
     @Getter
     private float spawnX;
     @Getter
@@ -116,18 +115,19 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                             public void accept( Void aVoid ) {
                                 if ( upstreamConnection.isConnected() ) {
                                     logger.info( "Disconnected downstream..." );
-                                    DownstreamConnection.this.manualClose = false;
-                                    DownstreamConnection.this.close();
+                                    if ( !DownstreamConnection.this.manualClose ) {
+                                        DownstreamConnection.this.close( true );
 
-                                    // Check if we need to disconnect upstream
-                                    if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
-                                        if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                                            return;
+                                        // Check if we need to disconnect upstream
+                                        if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                            if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                                return;
+                                            } else {
+                                                upstreamConnection.disconnect( "The Server has gone down" );
+                                            }
                                         } else {
-                                            upstreamConnection.disconnect( "The Server has gone down" );
+                                            upstreamConnection.resetPendingDownStream();
                                         }
-                                    } else {
-                                        upstreamConnection.resetPendingDownStream();
                                     }
                                 }
                             }
@@ -157,18 +157,19 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         case CONNECTION_CLOSED:
                         case CONNECTION_DISCONNECTED:
                             logger.info( "Disconnected downstream..." );
-                            DownstreamConnection.this.manualClose = false;
-                            DownstreamConnection.this.close();
+                            if ( !DownstreamConnection.this.manualClose ) {
+                                DownstreamConnection.this.close( true );
 
-                            // Check if we need to disconnect upstream
-                            if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
-                                if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                                    return;
+                                // Check if we need to disconnect upstream
+                                if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                    if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                        return;
+                                    } else {
+                                        upstreamConnection.disconnect( "The Server has gone down" );
+                                    }
                                 } else {
-                                    upstreamConnection.disconnect( "The Server has gone down" );
+                                    upstreamConnection.resetPendingDownStream();
                                 }
-                            } else {
-                                upstreamConnection.resetPendingDownStream();
                             }
 
                             break;
@@ -263,8 +264,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketStartGame startGame = new PacketStartGame();
                 startGame.deserialize( buffer );
 
-                if ( upstreamConnection.getEntityId() == -1 ) {
-                    upstreamConnection.setEntityId( startGame.getRuntimeEntityId() );
+                if ( upstreamConnection.getEntityRewriter() == null ) {
+                    upstreamConnection.setEntityRewriter( new EntityRewriter( startGame.getRuntimeEntityId() ) );
                 } else {
                     this.isFirst = false;
                 }
@@ -288,24 +289,50 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 break;
 
+            case Protocol.REMOVE_ENTITY_PACKET:
+                PacketRemoveEntity removeEntity = new PacketRemoveEntity();
+                removeEntity.deserialize( buffer );
+
+                long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId() );
+
+                removeEntity.setEntityId( entityId );
+
+                spawnedEntities.remove( entityId );
+
+                upstreamConnection.send( removeEntity );
+                break;
+
+            case Protocol.ADD_ITEM_ENTITY:
+                PacketAddItem packetAddItem = new PacketAddItem();
+                packetAddItem.deserialize( buffer );
+
+                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId() );
+                packetAddItem.setEntityId( addedId );
+                spawnedEntities.add( addedId );
+
+                upstreamConnection.send( packetAddItem );
+                break;
+
             case Protocol.ADD_ENTITY_PACKET:
                 PacketAddEntity packetAddEntity = new PacketAddEntity();
                 packetAddEntity.deserialize( buffer );
 
-                spawnedEntities.add( packetAddEntity.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId() );
+                packetAddEntity.setEntityId( addedId );
+                spawnedEntities.add( addedId );
 
-                buffer.setPosition( pos );
-                upstreamConnection.send( packetId, buffer );
+                upstreamConnection.send( packetAddEntity );
                 break;
 
             case Protocol.ADD_PLAYER_PACKET:
                 PacketAddPlayer packetAddPlayer = new PacketAddPlayer();
                 packetAddPlayer.deserialize( buffer );
 
-                spawnedEntities.add( packetAddPlayer.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
+                packetAddPlayer.setEntityId( addedId );
+                spawnedEntities.add( addedId );
 
-                buffer.setPosition( pos );
-                upstreamConnection.send( packetId, buffer );
+                upstreamConnection.send( packetAddPlayer );
                 break;
 
             case Protocol.PACKET_ENCRYPTION_REQUEST:
@@ -341,12 +368,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketPlayState packetPlayState = new PacketPlayState();
                 packetPlayState.deserialize( buffer );
 
-                logger.debug( "Got state: " + packetPlayState.getState().name() );
-
                 // We have been logged in. But we miss a spawn packet
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && state != ConnectionState.CONNECTED ) {
-                    logger.info( "Connected to downstream (" + connection.getConnection().getGuid() + ") for " + this.upstreamConnection.getName() );
-                    state = ConnectionState.CONNECTED;
+                    logger.info( "Connected to downstream (" + this.connection.getConnection().getGuid() + ") for " + this.upstreamConnection.getName() );
+                    this.state = ConnectionState.CONNECTED;
 
                     // First of all send channels
                     for ( Map.Entry<String, Byte> stringByteEntry : this.proxProx.getNetworkChannels().getChannels().entrySet() ) {
@@ -360,15 +385,14 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 // The first spawn state must come through
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN ) {
-                    if ( upstreamConnection.isFirstServer() ) {
-                        upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
-                    }
+                    this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
 
+                    this.upstreamConnection.getEntityRewriter().setCurrentDownStreamId( this.entityId );
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
 
                     PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
-                    setChunkRadius.setChunkRadius( upstreamConnection.getViewDistance() );
+                    setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() );
                     send( setChunkRadius );
                 }
 
@@ -404,42 +428,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             default:
                 if ( !this.isFirst ) {
-                    // Entity ID rewrites
-                    long entityId;
-                    switch ( packetId ) {
-                        case 0x28:
-                        case 0x1f:
-                        case 0x20:
-                        case 0x13:  // Move player
-                        case 0x1B:  // Entity event
-                        case 0x27:  // Entity metadata
-                        case 0x1D:  // Update attributes
-                            entityId = buffer.readUnsignedVarLong();
-                            if ( entityId == this.entityId ) {
-                                byte[] data = new byte[buffer.getRemaining()];
-                                buffer.readBytes( data );
-
-                                buffer = new PacketBuffer( 64 );
-                                buffer.writeUnsignedVarLong( this.upstreamConnection.getEntityId() );
-                                buffer.writeBytes( data );
-                                buffer.resetPosition();
-                            } else if ( entityId == this.upstreamConnection.getEntityId() ) {
-                                byte[] data = new byte[buffer.getRemaining()];
-                                buffer.readBytes( data );
-
-                                buffer = new PacketBuffer( 64 );
-                                buffer.writeUnsignedVarLong( this.entityId );
-                                buffer.writeBytes( data );
-                                buffer.resetPosition();
-                            } else {
-                                buffer.setPosition( pos );
-                            }
-
-                            break;
-                    }
+                    buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer );
                 }
 
-                upstreamConnection.send( packetId, buffer );
+                this.upstreamConnection.send( packetId, buffer );
                 break;
         }
     }
@@ -447,7 +439,14 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     /**
      * Close the connection to the underlying RakNet Server
      */
-    public void close() {
+    void close( boolean fireEvent ) {
+        this.manualClose = true;
+
+        if ( ( this.tcpConnection != null || this.connection != null ) && fireEvent ) {
+            ServerKickedPlayerEvent serverKickedPlayerEvent = new ServerKickedPlayerEvent( this.upstreamConnection, this );
+            ProxProx.instance.getPluginManager().callEvent( serverKickedPlayerEvent );
+        }
+
         if ( this.tcpConnection != null ) {
             this.tcpConnection.disconnect();
         }

@@ -101,21 +101,6 @@ public abstract class AbstractConnection {
         }
     }
 
-    private byte[] batch( byte[] data ) {
-        Deflater deflater = new Deflater( 7 );
-        deflater.setInput( data );
-        deflater.finish();
-
-        ByteArrayOutputStream baos = new ByteArrayOutputStream( data.length );
-        byte[] intermediate = new byte[256];
-        while ( !deflater.finished() ) {
-            int read = deflater.deflate( intermediate );
-            baos.write( intermediate, 0, read );
-        }
-
-        return baos.toByteArray();
-    }
-
     /**
      * Little internal handler for packets
      *

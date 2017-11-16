@@ -22,12 +22,9 @@ import java.util.zip.Deflater;
 @RequiredArgsConstructor
 public class PostProcessWorker {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger( PostProcessWorker.class );
-
     private final BatchStreamHolder batchHolder = new BatchStreamHolder();
     private final Connection connection;
     @Setter private EncryptionHandler encryptionHandler;
-
 
     private void writeVarInt( int value, OutputStream stream ) throws IOException {
         int copyValue = value;

@@ -10,16 +10,19 @@ package io.gomint.proxprox.network.protocol;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
+import lombok.Data;
 import lombok.Getter;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
-@Getter
+@Data
 public class PacketAddEntity extends Packet {
 
     private long entityId;
+
+    private byte[] data;
 
     /**
      * Constructor for implemented Packet AddEntity
@@ -30,11 +33,19 @@ public class PacketAddEntity extends Packet {
 
     @Override
     public void serialize( PacketBuffer buffer ) {
+        buffer.writeSignedVarLong( this.entityId );
+        buffer.writeUnsignedVarLong( this.entityId );
 
+        buffer.writeBytes( this.data );
     }
 
     @Override
     public void deserialize( PacketBuffer buffer ) {
-        this.entityId = buffer.readLong();
+        this.entityId = buffer.readSignedVarLong().longValue();
+        buffer.readUnsignedVarLong();
+
+        this.data = new byte[buffer.getRemaining()];
+        buffer.readBytes( this.data );
     }
+
 }
