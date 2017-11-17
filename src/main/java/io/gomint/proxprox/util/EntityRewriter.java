@@ -1,11 +1,14 @@
 package io.gomint.proxprox.util;
 
 import io.gomint.jraknet.PacketBuffer;
+import io.gomint.proxprox.network.protocol.PacketInventoryTransaction;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * @author geNAZt
@@ -14,26 +17,32 @@ import org.slf4j.LoggerFactory;
 @RequiredArgsConstructor
 public class EntityRewriter {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger( EntityRewriter.class );
+    @Getter private final long ownId;
+    @Getter @Setter private long currentDownStreamId;
+    private AtomicLong idCounter = new AtomicLong( 0 );
 
-    @Getter
-    private final long ownId;
-    @Getter
-    @Setter
-    private long currentDownStreamId;
+    private Map<Long, Long> rewriteIds = new ConcurrentHashMap<>();
+    private Map<Long, Long> serverRewriteIds = new ConcurrentHashMap<>();
 
     public long addEntity( long entityID ) {
-        // This happens only on server to client connections
-        return this.getReplacementId( entityID );
+        long newEntityId = this.idCounter.incrementAndGet();
+        if ( newEntityId == this.ownId ) {
+            newEntityId = this.idCounter.incrementAndGet();
+        }
+
+        this.serverRewriteIds.put( newEntityId, entityID );
+        this.rewriteIds.put( entityID, newEntityId );
+        return newEntityId;
     }
 
     public PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer ) {
         // Entity ID rewrites
         long entityId;
         switch ( packetId ) {
-            case 0x28:
-            case 0x1f:
-            case 0x20:
+            case 0x28:  // Entity motion
+            case 0x1f:  // Mob equip
+            case 0x20:  // Mob Armor
+            case 0x12:  // Entity move
             case 0x13:  // Move player
             case 0x1B:  // Entity event
             case 0x27:  // Entity metadata
@@ -41,12 +50,11 @@ public class EntityRewriter {
                 entityId = buffer.readUnsignedVarLong();
                 long replacementID = getReplacementId( entityId );
 
-                LOGGER.debug( "Rewriting " + Integer.toHexString( packetId & 0xFF ) + " with entity ID " + replacementID );
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
                     buffer.readBytes( data );
 
-                    buffer = new PacketBuffer( 64 );
+                    buffer = new PacketBuffer( 8 );
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
                     buffer.resetPosition();
@@ -55,22 +63,49 @@ public class EntityRewriter {
                 }
 
                 break;
+
+            case 0x2C:  // Animation
+                int actionId = buffer.readSignedVarInt();
+
+                entityId = buffer.readUnsignedVarLong();
+                replacementID = getReplacementId( entityId );
+
+                if ( entityId != replacementID ) {
+                    byte[] data = new byte[buffer.getRemaining()];
+                    buffer.readBytes( data );
+
+                    buffer = new PacketBuffer( 8 );
+                    buffer.writeSignedVarInt( actionId );
+                    buffer.writeUnsignedVarLong( replacementID );
+                    buffer.writeBytes( data );
+                    buffer.resetPosition();
+                } else {
+                    buffer.setPosition( pos );
+                }
+
+                break;
+
+            case 0x11: // Pickup entity
+                long itemId = buffer.readUnsignedVarLong();
+                long playerId = buffer.readUnsignedVarLong();
+
+                buffer = new PacketBuffer( 8 );
+                buffer.writeUnsignedVarLong( itemId );
+                buffer.writeUnsignedVarLong( playerId );
+                buffer.resetPosition();
+
+                break;
         }
 
         return buffer;
     }
 
     private long getReplacementId( long entityId ) {
-        LOGGER.debug( "Rewrite entity id: " + entityId + " " + this.ownId + " " + this.currentDownStreamId );
-
-        // Check if the ID is either our own from up or down stream
         if ( entityId == this.currentDownStreamId ) {
             return this.ownId;
-        } else if ( entityId == this.ownId ) {
-            return this.currentDownStreamId;
         }
 
-        return entityId;
+        return this.rewriteIds.get( entityId );
     }
 
     private long getReplacementIdForServer( long entityId ) {
@@ -78,7 +113,7 @@ public class EntityRewriter {
             return this.currentDownStreamId;
         }
 
-        return entityId;
+        return this.serverRewriteIds.get( entityId );
     }
 
     public PacketBuffer rewriteClientToServer( byte packetId, int pos, PacketBuffer buffer ) {
@@ -122,13 +157,50 @@ public class EntityRewriter {
                 }
 
                 break;
+
+            case 0x21:  // Interact
+                byte action = buffer.readByte();
+                entityId = buffer.readUnsignedVarLong();
+                replacementID = getReplacementIdForServer( entityId );
+
+                byte[] data = new byte[buffer.getRemaining()];
+                buffer.readBytes( data );
+
+                if ( entityId != replacementID ) {
+                    buffer = new PacketBuffer( 6 );
+                    buffer.writeByte( action );
+                    buffer.writeUnsignedVarLong( replacementID );
+                    buffer.writeBytes( data );
+                    buffer.resetPosition();
+                } else {
+                    buffer.setPosition( pos );
+                }
+
+                break;
+
+            case 0x1E: // Inventory transaction
+                PacketInventoryTransaction inventoryTransaction = new PacketInventoryTransaction();
+                inventoryTransaction.deserialize( buffer );
+
+                // Check if the action is a entity based
+                if ( inventoryTransaction.getType() == PacketInventoryTransaction.TYPE_USE_ITEM_ON_ENTITY ) {
+                    inventoryTransaction.setEntityId( getReplacementIdForServer( inventoryTransaction.getEntityId() ) );
+                    buffer = new PacketBuffer( 8 );
+                    inventoryTransaction.serialize( buffer );
+                } else {
+                    buffer.setPosition( pos );
+                }
+
+                break;
         }
 
         return buffer;
     }
 
     public long removeEntity( long entityId ) {
-        return this.getReplacementId( entityId );
+        long newEntity = this.rewriteIds.remove( entityId );
+        this.serverRewriteIds.remove( newEntity );
+        return newEntity;
     }
 
 }

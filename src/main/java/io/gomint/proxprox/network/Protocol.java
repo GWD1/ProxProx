@@ -48,6 +48,7 @@ public class Protocol {
      * Packet ID for Player movement
      */
     public static final byte PACKET_MOVE_PLAYER = (byte) 0x13;
+    public static final byte PACKET_INVENTORY_TRANSACTION = (byte) 0x1E;
 
     /**
      * Packet ID for Player Add
