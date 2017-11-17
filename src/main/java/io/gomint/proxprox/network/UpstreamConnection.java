@@ -577,8 +577,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Override
     public Locale getLocale() {
         return this.skinData.containsKey( "LanguageCode" ) ?
-                Locale.forLanguageTag( (String) this.skinData.get( "LanguageCode" ) ) :
-                Locale.ENGLISH;
+                Locale.forLanguageTag( ( (String) this.skinData.get( "LanguageCode" ) ).replace( "_", "-" ) ) :
+                Locale.US;
     }
 
     @Override
