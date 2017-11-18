@@ -400,6 +400,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @param downstreamConnection The downstream which connected
      */
     void onDownStreamConnected( DownstreamConnection downstreamConnection ) {
+        logger.info( "Connected to " + downstreamConnection.getIP() + ":" + downstreamConnection.getPort() );
+
         // Close old connection and store new one
         if ( this.currentDownStream != null ) {
             this.lastKnownServer = new ServerDataHolder( this.currentDownStream.getIP(), this.currentDownStream.getPort() );

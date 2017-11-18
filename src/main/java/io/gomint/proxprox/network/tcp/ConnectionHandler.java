@@ -100,7 +100,11 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     }
 
     public void disconnect() {
-        this.ctx.disconnect().syncUninterruptibly();
+        try {
+            this.ctx.disconnect().sync();
+        } catch ( InterruptedException e ) {
+            e.printStackTrace();
+        }
     }
 
     private static final class Flusher implements Runnable {
