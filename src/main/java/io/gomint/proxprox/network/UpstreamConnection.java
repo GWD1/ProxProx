@@ -327,10 +327,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
             default:
                 if ( this.currentDownStream != null ) {
-                    if ( this.entityRewriter.getCurrentDownStreamId() != this.entityRewriter.getOwnId() ) {
-                        buffer = this.entityRewriter.rewriteClientToServer( packetId, pos, buffer );
-                    }
-
+                    buffer = this.entityRewriter.rewriteClientToServer( packetId, pos, buffer );
                     this.currentDownStream.send( packetId, buffer );
                 }
 
@@ -465,6 +462,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 chunk.setChunkZ( z );
                 chunk.setChunkData( EMPTY_CHUNK.getBuffer() );
                 send( chunk );
+
+                try {
+                    Thread.sleep( 5 );
+                } catch ( InterruptedException e ) {
+                    e.printStackTrace();
+                }
             }
         }
     }

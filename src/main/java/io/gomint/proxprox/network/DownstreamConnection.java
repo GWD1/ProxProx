@@ -51,7 +51,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private ClientSocket connection;
     private Thread connectionReadThread;
     private PostProcessWorker postProcessWorker;
-    private boolean isFirst = true;
     private ConnectionHandler tcpConnection;
     private boolean manualClose;
 
@@ -195,8 +194,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     protected void setup() {
         super.setup();
 
-        new Exception().printStackTrace();
-
         this.postProcessWorker = new PostProcessWorker( this.getConnection() );
         this.connectionReadThread = this.proxProx.getNewServerConnectionThread( new Runnable() {
             @Override
@@ -265,13 +262,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketStartGame startGame = new PacketStartGame();
                 startGame.deserialize( buffer );
 
-                if ( upstreamConnection.getEntityRewriter() == null ) {
-                    upstreamConnection.setEntityRewriter( new EntityRewriter( startGame.getRuntimeEntityId() ) );
-                } else {
-                    this.isFirst = false;
+                if ( this.upstreamConnection.getEntityRewriter() == null ) {
+                    this.upstreamConnection.setEntityRewriter( new EntityRewriter( startGame.getRuntimeEntityId() ) );
                 }
 
-                this.entityId = startGame.getRuntimeEntityId();
+                this.upstreamConnection.getEntityRewriter().setCurrentDownStreamId( startGame.getRuntimeEntityId() );
                 this.spawnX = startGame.getSpawnX();
                 this.spawnY = startGame.getSpawnY();
                 this.spawnZ = startGame.getSpawnZ();
@@ -294,7 +289,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketRemoveEntity removeEntity = new PacketRemoveEntity();
                 removeEntity.deserialize( buffer );
 
-                long entityId = ( this.isFirst ) ? removeEntity.getEntityId() :this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId() );
+                long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId() );
 
                 removeEntity.setEntityId( entityId );
 
@@ -307,7 +302,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddItem packetAddItem = new PacketAddItem();
                 packetAddItem.deserialize( buffer );
 
-                long addedId = ( this.isFirst ) ? packetAddItem.getEntityId() : this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId() );
+                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId() );
                 packetAddItem.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -318,7 +313,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddEntity packetAddEntity = new PacketAddEntity();
                 packetAddEntity.deserialize( buffer );
 
-                addedId = ( this.isFirst ) ? packetAddEntity.getEntityId() : this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId() );
                 packetAddEntity.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -329,7 +324,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddPlayer packetAddPlayer = new PacketAddPlayer();
                 packetAddPlayer.deserialize( buffer );
 
-                addedId = ( this.isFirst ) ? packetAddPlayer.getEntityId() : this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
                 packetAddPlayer.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -387,8 +382,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 // The first spawn state must come through
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN ) {
                     this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
-
-                    this.upstreamConnection.getEntityRewriter().setCurrentDownStreamId( this.entityId );
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
 
@@ -428,7 +421,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 break;
 
             default:
-                if ( !this.isFirst ) {
+                if ( this.upstreamConnection.getEntityRewriter() == null ) {
+                    logger.warn( "Unexpected packet " + Integer.toHexString( packetId & 0xFF ) + " before world init" );
+                } else {
                     buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer );
                 }
 

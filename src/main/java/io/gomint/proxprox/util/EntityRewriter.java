@@ -5,6 +5,8 @@ import io.gomint.proxprox.network.protocol.PacketInventoryTransaction;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,6 +18,8 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 @RequiredArgsConstructor
 public class EntityRewriter {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger( EntityRewriter.class );
 
     @Getter private final long ownId;
     @Getter @Setter private long currentDownStreamId;
@@ -105,7 +109,13 @@ public class EntityRewriter {
             return this.ownId;
         }
 
-        return this.rewriteIds.get( entityId );
+        Long rewrite = this.rewriteIds.get( entityId );
+        if ( rewrite == null ) {
+            LOGGER.warn( "Got entity packet for entity not spawned yet: " + entityId );
+            return entityId;
+        }
+
+        return rewrite;
     }
 
     private long getReplacementIdForServer( long entityId ) {
@@ -187,6 +197,7 @@ public class EntityRewriter {
                     inventoryTransaction.setEntityId( getReplacementIdForServer( inventoryTransaction.getEntityId() ) );
                     buffer = new PacketBuffer( 8 );
                     inventoryTransaction.serialize( buffer );
+                    buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
                 }
