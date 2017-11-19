@@ -135,6 +135,7 @@ public class EntityRewriter {
             case 0x13: // Move player
             case 0x27: // Entity metadata
             case 0x1B: // Entity Event
+            case 0x24: // Player action
                 entityId = buffer.readUnsignedVarLong();
                 long replacementID = getReplacementIdForServer( entityId );
 

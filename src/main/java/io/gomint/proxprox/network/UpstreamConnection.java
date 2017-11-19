@@ -21,6 +21,7 @@ import io.gomint.proxprox.api.event.PlayerLoggedinEvent;
 import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
+import io.gomint.proxprox.inventory.ItemStack;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.util.EntityRewriter;
@@ -633,6 +634,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         if ( this.firstServer ) {
             this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
             this.firstServer = false;
+        } else {
+            PacketMobEquipment packetMobEquipment = new PacketMobEquipment();
+            packetMobEquipment.setEntityId( this.entityRewriter.getOwnId() );
+            packetMobEquipment.setSelectedSlot( (byte) 0 );
+            packetMobEquipment.setSlot( (byte) 0 );
+            packetMobEquipment.setStack( new ItemStack( 0, (short) 0, 0 ) );
+            this.send( packetMobEquipment );
         }
 
         this.currentDownStream = downstreamConnection;
