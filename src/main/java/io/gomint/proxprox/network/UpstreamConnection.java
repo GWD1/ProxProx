@@ -408,7 +408,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             // Cleanup all entities
             for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
                 send( new PacketRemoveEntity( eID ) );
-                this.entityRewriter.removeEntity( eID );
+                this.entityRewriter.removeServerEntity( eID );
             }
 
             // Loading screen (holy did this take long to figure out :D)

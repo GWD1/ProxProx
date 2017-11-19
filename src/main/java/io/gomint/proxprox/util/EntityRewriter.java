@@ -215,8 +215,15 @@ public class EntityRewriter {
             return entityId;
         }
 
-        this.serverRewriteIds.remove( newEntity );
+        this.serverRewriteIds.remove( entityId );
         return newEntity;
+    }
+
+    public void removeServerEntity( long entityId ) {
+        Long oldId = this.serverRewriteIds.remove( entityId );
+        if ( oldId != null ) {
+            this.rewriteIds.remove( oldId );
+        }
     }
 
 }

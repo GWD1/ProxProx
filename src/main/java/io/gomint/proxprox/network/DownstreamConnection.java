@@ -61,7 +61,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private ProxProx proxProx;
 
     // Entities
-    private long entityId;
     private Set<Long> spawnedEntities = new HashSet<>();
     @Getter
     private float spawnX;
@@ -492,7 +491,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
      * @return
      */
     public Set<Long> getSpawnedEntities() {
-        return spawnedEntities;
+        return this.spawnedEntities;
     }
 
     @Override
