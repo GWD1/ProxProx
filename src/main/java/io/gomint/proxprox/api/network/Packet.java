@@ -144,7 +144,7 @@ public abstract class Packet {
 	 * @param itemStack which should be written
 	 * @param buffer    which should be used to write to
 	 */
-	public void writeItemStack( ItemStack itemStack, PacketBuffer buffer ) {
+	public static void writeItemStack( ItemStack itemStack, PacketBuffer buffer ) {
 		if ( itemStack == null || itemStack.getMaterial() == 0 ) {
 			buffer.writeSignedVarInt( 0 );
 			return;

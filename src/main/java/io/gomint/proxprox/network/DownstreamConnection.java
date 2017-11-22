@@ -234,6 +234,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             buffer.readShort();
         }
 
+        this.upstreamConnection.getDebugger().addPacket( this.ip + ":" + this.port, "Proxy", packetId, buffer );
+
         // Check if we are in custom protocol mode :D
         if ( packetId == (byte) 0xFF ) {
             PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
@@ -263,6 +265,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 if ( this.upstreamConnection.getEntityRewriter() == null ) {
                     this.upstreamConnection.setEntityRewriter( new EntityRewriter( startGame.getRuntimeEntityId() ) );
+                    this.upstreamConnection.getEntityRewriter().setDebugger( this.upstreamConnection.getDebugger() );
                 }
 
                 this.upstreamConnection.getEntityRewriter().setCurrentDownStreamId( startGame.getRuntimeEntityId() );
@@ -274,11 +277,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.difficulty = startGame.getDifficulty();
                 this.gamemode = startGame.getGamemode();
 
-                if ( upstreamConnection.isFirstServer() ) {
+                if ( this.upstreamConnection.isFirstServer() ) {
                     buffer.setPosition( pos );
-                    upstreamConnection.send( packetId, buffer );
+                    this.upstreamConnection.send( packetId, buffer );
                 } else {
-                    upstreamConnection.move( this.getSpawnX(), this.getSpawnY(), this.getSpawnZ(),
+                    this.upstreamConnection.move( this.getSpawnX(), this.getSpawnY(), this.getSpawnZ(),
                             this.getSpawnYaw(), this.getSpawnPitch() );
                 }
 
@@ -288,7 +291,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketRemoveEntity removeEntity = new PacketRemoveEntity();
                 removeEntity.deserialize( buffer );
 
-                long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId() );
+                long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( this.ip + ":" + this.port, removeEntity.getEntityId() );
 
                 removeEntity.setEntityId( entityId );
 
@@ -301,7 +304,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddItem packetAddItem = new PacketAddItem();
                 packetAddItem.deserialize( buffer );
 
-                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId() );
+                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( this.ip + ":" + this.port, packetAddItem.getEntityId() );
                 packetAddItem.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -312,9 +315,20 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddEntity packetAddEntity = new PacketAddEntity();
                 packetAddEntity.deserialize( buffer );
 
-                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( this.ip + ":" + this.port, packetAddEntity.getEntityId() );
                 packetAddEntity.setEntityId( addedId );
                 spawnedEntities.add( addedId );
+
+                // Rewrite metadata if needed
+                if ( packetAddEntity.getMetadataContainer().has( 5 ) ) {
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( packetAddEntity.getMetadataContainer().getLong( 5 ) );
+                    packetAddEntity.getMetadataContainer().putLong( 5, replacementId );
+                }
+
+                if ( packetAddEntity.getMetadataContainer().has( 6 ) ) {
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( packetAddEntity.getMetadataContainer().getLong( 6 ) );
+                    packetAddEntity.getMetadataContainer().putLong( 6, replacementId );
+                }
 
                 upstreamConnection.send( packetAddEntity );
                 break;
@@ -323,7 +337,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddPlayer packetAddPlayer = new PacketAddPlayer();
                 packetAddPlayer.deserialize( buffer );
 
-                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( this.ip + ":" + this.port, packetAddPlayer.getEntityId() );
                 packetAddPlayer.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -423,7 +437,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 if ( this.upstreamConnection.getEntityRewriter() == null ) {
                     logger.warn( "Unexpected packet " + Integer.toHexString( packetId & 0xFF ) + " before world init" );
                 } else {
-                    buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer );
+                    buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( this.ip + ":" + this.port, packetId, pos, buffer );
                 }
 
                 this.upstreamConnection.send( packetId, buffer );
@@ -496,32 +510,30 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     @Override
     public void send( Packet packet ) {
+        PacketBuffer buffer = new PacketBuffer( 64 );
+        buffer.writeByte( packet.getId() );
+        buffer.writeShort( (short) 0 );
+        packet.serialize( buffer );
+
+        this.upstreamConnection.getDebugger().addPacket( "DownStream", this.ip + ":" + this.port, packet.getId(), buffer );
+
         // Do we send via TCP or UDP?
         if ( this.tcpConnection != null ) {
-            PacketBuffer buffer = new PacketBuffer( 64 );
-            buffer.writeByte( packet.getId() );
-            buffer.writeShort( (short) 0 );
-            packet.serialize( buffer );
-
-            logger.info( "Sending packet via TCP: " + packet.getId() );
-
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
             mcpePacket.setBuffer( buffer );
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
-                this.postProcessWorker.sendPacket( packet );
+                this.postProcessWorker.sendPacket( buffer );
             } else {
-                PacketBuffer buffer = new PacketBuffer( 64 );
-                buffer.writeByte( packet.getId() );
-                packet.serialize( buffer );
-
                 this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
             }
         }
     }
 
     public void send( byte packetId, PacketBuffer buffer ) {
+        this.upstreamConnection.getDebugger().addPacket( "DownStream", this.ip + ":" + this.port, packetId, buffer );
+
         if ( this.tcpConnection != null ) {
             PacketBuffer newBuffer = new PacketBuffer( 64 );
             newBuffer.writeByte( packetId );
@@ -539,17 +551,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             byte[] data = new byte[buffer.getRemaining()];
             buffer.readBytes( data );
 
-            this.postProcessWorker.sendPacket( new Packet( packetId ) {
-                @Override
-                public void serialize( PacketBuffer pktBuffer ) {
-                    pktBuffer.writeBytes( data );
-                }
-
-                @Override
-                public void deserialize( PacketBuffer buffer ) {
-
-                }
-            } );
+            PacketBuffer packetBuffer = new PacketBuffer( 64 );
+            packetBuffer.writeByte( packetId );
+            packetBuffer.writeShort( (short) 0 );
+            packetBuffer.writeBytes( data );
+            this.postProcessWorker.sendPacket( packetBuffer );
         }
     }
 
