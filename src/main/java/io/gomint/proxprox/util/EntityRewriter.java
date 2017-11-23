@@ -138,7 +138,18 @@ public class EntityRewriter {
             return this.currentDownStreamId;
         }
 
-        return this.serverRewriteIds.get( entityId );
+        Long rewriteId = this.serverRewriteIds.get( entityId );
+        if ( rewriteId == null ) {
+            LOGGER.error( "Did not find replacement id for " + entityId );
+
+            for ( Map.Entry<Long, Long> longLongEntry : this.serverRewriteIds.entrySet() ) {
+                LOGGER.info( "Found " + longLongEntry.getKey() + " -> " + longLongEntry.getValue() );
+            }
+
+            return entityId;
+        }
+
+        return rewriteId;
     }
 
     public PacketBuffer rewriteClientToServer( String to, byte packetId, int pos, PacketBuffer buffer ) {
@@ -247,7 +258,7 @@ public class EntityRewriter {
             return entityId;
         }
 
-        this.serverRewriteIds.remove( entityId );
+        this.serverRewriteIds.remove( newEntity );
         return newEntity;
     }
 

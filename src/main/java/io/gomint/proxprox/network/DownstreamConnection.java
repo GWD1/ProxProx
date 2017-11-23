@@ -379,17 +379,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 // We have been logged in. But we miss a spawn packet
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && state != ConnectionState.CONNECTED ) {
-                    logger.info( "Connected to downstream (" + this.connection.getConnection().getGuid() + ") for " + this.upstreamConnection.getName() );
                     this.state = ConnectionState.CONNECTED;
-
-                    // First of all send channels
-                    for ( Map.Entry<String, Byte> stringByteEntry : this.proxProx.getNetworkChannels().getChannels().entrySet() ) {
-                        PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
-                        packetCustomProtocol.setMode( 0 );
-                        packetCustomProtocol.setChannel( stringByteEntry.getValue() );
-                        packetCustomProtocol.setChannelName( stringByteEntry.getKey() );
-                        send( packetCustomProtocol );
-                    }
                 }
 
                 // The first spawn state must come through
