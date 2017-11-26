@@ -90,6 +90,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // View distance
     @Getter
     private int viewDistance = 6;
+    private String disconnect = null;
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
@@ -269,8 +270,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     e.printStackTrace();
                 }
 
-                send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
-
                 PlayerLoginEvent event = this.proxProx.getPluginManager().callEvent( new PlayerLoginEvent( this ) );
                 if ( event.isCancelled() ) {
                     disconnect( event.getDisconnectReason() );
@@ -281,6 +280,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 Thread.currentThread().setName( "UpStream " + getUUID() + " [Packet Read/Rewrite]" );
                 this.state = ConnectionState.CONNECTED;
 
+                send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
                 this.proxProx.addPlayer( this );
 
                 // We need to start encryption first
@@ -301,6 +301,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
             case Protocol.PACKET_ENCRYPTION_READY:
                 this.postProcessWorker.setEncryptionHandler( this.encryptionHandler );
+
+                this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
 
                 // Send resource pack stuff
                 PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
@@ -324,7 +326,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         send( resourcePackStack );
                         break;
                     case COMPLETED:
-                        this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
                         break;
                 }
 
@@ -517,17 +518,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      */
     public void disconnect( String reason ) {
         send( new PacketDisconnect( reason ) );
-        this.connection.disconnect( reason );
-
-        if ( this.pendingDownStream != null ) {
-            this.pendingDownStream.disconnect( reason );
-            this.pendingDownStream = null;
-        }
-
-        if ( this.currentDownStream != null ) {
-            this.currentDownStream.disconnect( reason );
-            this.currentDownStream = null;
-        }
+        this.disconnect = reason;
     }
 
     /**
@@ -689,6 +680,20 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             List<PacketBuffer> buffers = new ArrayList<>();
             this.packetQueue.drainTo( buffers );
             this.postProcessWorker.sendPackets( buffers );
+        }
+
+        if ( this.disconnect != null ) {
+            this.connection.disconnect( this.disconnect );
+
+            if ( this.pendingDownStream != null ) {
+                this.pendingDownStream.disconnect( this.disconnect );
+                this.pendingDownStream = null;
+            }
+
+            if ( this.currentDownStream != null ) {
+                this.currentDownStream.disconnect( this.disconnect );
+                this.currentDownStream = null;
+            }
         }
     }
 
