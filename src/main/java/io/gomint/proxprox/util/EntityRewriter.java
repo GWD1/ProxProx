@@ -23,7 +23,7 @@ public class EntityRewriter {
     private static final Logger LOGGER = LoggerFactory.getLogger( EntityRewriter.class );
 
     @Setter private Debugger debugger;
-    @Getter private final long ownId;
+    @Getter @Setter private long ownId;
     @Getter @Setter private long currentDownStreamId;
     private AtomicLong idCounter = new AtomicLong( 0 );
 

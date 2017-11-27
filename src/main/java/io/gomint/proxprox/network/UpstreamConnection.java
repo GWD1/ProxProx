@@ -73,9 +73,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private JSONObject skinData;
     @Getter private Debugger debugger;
 
-    @Setter
-    @Getter
-    private EntityRewriter entityRewriter;
+    @Getter private EntityRewriter entityRewriter = new EntityRewriter();
     private int protocolVersion;
 
     // Last known good server

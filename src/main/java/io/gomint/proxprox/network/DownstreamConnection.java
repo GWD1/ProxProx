@@ -237,7 +237,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             buffer.readShort();
         }
 
-        this.upstreamConnection.getDebugger().addPacket( this.ip + ":" + this.port, "Proxy", packetId, buffer );
+        logger.info( Integer.toHexString( packetId & 0xFF ) );
+        // this.upstreamConnection.getDebugger().addPacket( this.ip + ":" + this.port, "Proxy", packetId, buffer );
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
@@ -250,8 +251,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketStartGame startGame = new PacketStartGame();
                 startGame.deserialize( buffer );
 
-                if ( this.upstreamConnection.getEntityRewriter() == null ) {
-                    this.upstreamConnection.setEntityRewriter( new EntityRewriter( startGame.getRuntimeEntityId() ) );
+                if ( this.upstreamConnection.isFirstServer() ) {
+                    this.upstreamConnection.getEntityRewriter().setOwnId( startGame.getRuntimeEntityId() );
                     this.upstreamConnection.getEntityRewriter().setDebugger( this.upstreamConnection.getDebugger() );
                 }
 
@@ -410,12 +411,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 break;
 
             default:
-                if ( this.upstreamConnection.getEntityRewriter() == null ) {
-                    logger.warn( "Unexpected packet {} before world init", Integer.toHexString( packetId & 0xFF ) );
-                } else {
-                    buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( this.ip + ":" + this.port, packetId, pos, buffer );
-                }
-
+                buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( this.ip + ":" + this.port, packetId, pos, buffer );
                 this.upstreamConnection.send( packetId, buffer );
                 break;
         }
