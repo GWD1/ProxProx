@@ -5,8 +5,8 @@ import io.gomint.jraknet.PacketBuffer;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class Debugger {
 
-    private Queue<String> persistQueue = new ConcurrentLinkedQueue<>();
+    private BlockingQueue<String> persistQueue = new LinkedBlockingQueue<>();
     private FileWriter fileWriter;
     private AtomicBoolean running = new AtomicBoolean( true );
 
@@ -91,26 +91,31 @@ public class Debugger {
         }
 
         buffer.setPosition( oldPosition );
-        this.persistQueue.add( builder.toString() );*/
+        addLine( builder.toString() );*/
     }
 
     public void removeEntity( String from, long oldId ) {
         /*String builder = "[ER] " + from + ": " + oldId;
-        this.persistQueue.add( builder );*/
+        addLine( builder );*/
+    }
+
+    private void addLine( String content ) {
+        String line = "[" + Thread.currentThread().getName() + "] [" + System.currentTimeMillis() + "] " + content;
+        this.persistQueue.add( line );
     }
 
     public void addEntity( String from, long oldId, long newId ) {
         /*String builder = "[EA] " + from + ": " + oldId + " -> " + newId;
-        this.persistQueue.add( builder );*/
+        addLine( builder );*/
     }
 
     public void addEntityRewrite( String from, String to, byte packetId, long oldId, long newId ) {
-        /*String builder = "[ER] " + from + " -> " + to + ": " + oldId + " -> " + newId;
-        this.persistQueue.add( builder );*/
+        /*String builder = "[ER] " + from + " -> " + to + " 0x" + Integer.toHexString( packetId & 0xFF ) + ": " + oldId + " -> " + newId;
+        addLine( builder );*/
     }
 
     public void addCustomLine( String line ) {
-        //this.persistQueue.add( line );
+        // addLine( line );
     }
 
 }

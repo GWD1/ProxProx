@@ -74,10 +74,4 @@ public class Protocol {
     public static final byte PACKET_SET_DIFFICULTY = (byte) 0x3C;
     public static final byte PACKET_SET_GAMEMODE = (byte) 0x3E;
 
-    /**
-     * Packet ID for Dimension change
-     */
-    public static final byte CHANGE_DIMENSION_PACKET = (byte) 0x3D;
-    public static final byte PACKET_SET_CHUNK_RADIUS = (byte) 0x45;
-
 }

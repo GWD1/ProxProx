@@ -7,17 +7,17 @@
 
 package io.gomint.proxprox.util;
 
-import com.google.common.base.Strings;
 import io.gomint.jraknet.PacketBuffer;
-
-import java.util.List;
-import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author geNAZt
  * @version 1.0
  */
 public class DumpUtil {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger( DumpUtil.class );
 
     public static void dumpPacketbuffer( PacketBuffer buffer ) {
         StringBuilder lineBuilder = new StringBuilder();
@@ -38,9 +38,7 @@ public class DumpUtil {
             }
 
             lineBuilder.append( " " ).append( stringRepBuilder );
-            lineBuilder.append( "\n" );
-
-            System.out.print( lineBuilder.toString() );
+            LOGGER.info( lineBuilder.toString() );
             lineBuilder = new StringBuilder();
             stringRepBuilder = new StringBuilder();
         }

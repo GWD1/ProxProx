@@ -25,6 +25,7 @@ import io.gomint.proxprox.debug.Debugger;
 import io.gomint.proxprox.inventory.ItemStack;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.util.DumpUtil;
 import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -41,7 +42,6 @@ import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
 /**
@@ -51,9 +51,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 @EqualsAndHashCode( of = { "uuid" }, callSuper = false )
 public class UpstreamConnection extends AbstractConnection implements Player {
 
-    private static final PacketBuffer EMPTY_CHUNK = new PacketBuffer( 1 + ( 16 * 16 * 2 ) + ( 16 * 16 ) + 2 );
     private static final EncryptionRequestForger FORGER = new EncryptionRequestForger();
-    private static final Logger logger = LoggerFactory.getLogger( UpstreamConnection.class );
+    private static final Logger LOGGER = LoggerFactory.getLogger( UpstreamConnection.class );
     private final ProxProx proxProx;
 
     // AbstractConnection stuff
@@ -87,9 +86,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
 
-    // View distance
-    @Getter
-    private int viewDistance = 6;
     private String disconnect = null;
 
     /**
@@ -133,7 +129,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
                     if ( buffer.getRemaining() <= 0 ) {
                         // Malformed packet:
-                        logger.warn( "Got 0 length packet" );
+                        LOGGER.warn( "Got 0 length packet" );
                         return;
                     }
 
@@ -157,23 +153,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             buffer.readShort();
         }
 
-        this.debugger.addPacket( "Client", "UpStream", packetId, buffer );
+        // this.debugger.addPacket( "Client", "UpStream", packetId, buffer );
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
         switch ( packetId ) {
             case Protocol.PACKET_BATCH:
                 this.handleBatchPacket( buffer, reliability, orderingChannel, batched );
-                break;
-
-            case Protocol.PACKET_SET_CHUNK_RADIUS:
-                this.viewDistance = buffer.readSignedVarInt();
-                buffer.setPosition( pos );
-
-                if ( this.currentDownStream != null ) {
-                    this.currentDownStream.send( packetId, buffer );
-                }
-
                 break;
 
             case Protocol.PACKET_LOGIN:
@@ -242,7 +228,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
                 // Log xbox accounts if needed
                 if ( this.valid ) {
-                    logger.info( "Got valid XBOX Live Account ID: " + chainValidator.getXboxId() );
+                    LOGGER.info( "Got valid XBOX Live Account ID: " + chainValidator.getXboxId() );
                     this.xboxId = chainValidator.getXboxId();
                 }
 
@@ -276,11 +262,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     return;
                 }
 
-                logger.info( "Logged in as " + chainValidator.getUsername() + " (UUID: " + chainValidator.getUUID().toString() + "; GUID: " + connection.getGuid() + ")" );
+                LOGGER.info( "Logged in as {} (UUID: {}; GUID: {})", chainValidator.getUsername(), chainValidator.getUUID(), connection.getGuid() );
                 Thread.currentThread().setName( "UpStream " + getUUID() + " [Packet Read/Rewrite]" );
                 this.state = ConnectionState.CONNECTED;
 
-                send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
                 this.proxProx.addPlayer( this );
 
                 // We need to start encryption first
@@ -302,6 +287,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             case Protocol.PACKET_ENCRYPTION_READY:
                 this.postProcessWorker.setEncryptionHandler( this.encryptionHandler );
 
+                send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
                 this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
 
                 // Send resource pack stuff
@@ -404,7 +390,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @param downstreamConnection The downstream which connected
      */
     void onDownStreamConnected( DownstreamConnection downstreamConnection ) {
-        logger.info( "Connected to " + downstreamConnection.getIP() + ":" + downstreamConnection.getPort() );
+        LOGGER.info( "Connected to " + downstreamConnection.getIP() + ":" + downstreamConnection.getPort() );
 
         // Close old connection and store new one
         if ( this.currentDownStream != null ) {
@@ -417,19 +403,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.entityRewriter.removeServerEntity( eID );
             }
 
-            // Loading screen (holy did this take long to figure out :D)
-            send( new PacketChangeDimension( (byte) 0 ) );
-            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
-            send( new PacketChangeDimension( (byte) 1 ) );
-            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
-
             move( 0, 4000, 0, 0, 0 );
-            sendEmptyChunks();
-
-            send( new PacketChangeDimension( (byte) 1 ) );
-            send( new PacketPlayState( PacketPlayState.PlayState.SPAWN ) );
-            send( new PacketChangeDimension( (byte) 0 ) );
-            // There needs to be one additional spawn but the downstream server sends one so its ok
 
             this.currentDownStream = null;
         }
@@ -461,24 +435,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         downstreamConnection.send( packetClientHandshake );
     }
 
-    private void sendEmptyChunks() {
-        for ( int x = -3; x < 3; x++ ) {
-            for ( int z = -3; z < 3; z++ ) {
-                PacketFullChunkData chunk = new PacketFullChunkData();
-                chunk.setChunkX( x );
-                chunk.setChunkZ( z );
-                chunk.setChunkData( EMPTY_CHUNK.getBuffer() );
-                send( chunk );
-
-                try {
-                    Thread.sleep( 5 );
-                } catch ( InterruptedException e ) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-
     public void move( float x, float y, float z, float yaw, float pitch ) {
         PacketMovePlayer packet = new PacketMovePlayer();
         packet.setEntityId( this.entityRewriter.getOwnId() );
@@ -502,7 +458,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         buffer.writeShort( (short) 0 );
         packet.serialize( buffer );
 
+        int oldPos = buffer.getPosition();
+        buffer.resetPosition();
         this.debugger.addPacket( "UpStream", "Client", packet.getId(), buffer );
+        buffer.setPosition( oldPos );
 
         if ( !( packet instanceof PacketBatch ) && packet.mustBeInBatch() ) {
             this.packetQueue.add( buffer );
@@ -676,7 +635,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void update() {
-        if ( this.packetQueue.size() > 0 ) {
+        if ( !this.packetQueue.isEmpty() ) {
             List<PacketBuffer> buffers = new ArrayList<>();
             this.packetQueue.drainTo( buffers );
             this.postProcessWorker.sendPackets( buffers );

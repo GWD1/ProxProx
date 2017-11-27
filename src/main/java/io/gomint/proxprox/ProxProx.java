@@ -13,14 +13,13 @@ import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.event.PlayerQuitEvent;
+import io.gomint.proxprox.commands.Commandend;
+import io.gomint.proxprox.commands.Commandplugins;
 import io.gomint.proxprox.config.ProxyConfig;
-import io.gomint.proxprox.network.CustomProtocolChannels;
-import io.gomint.proxprox.network.EncryptionKeyFactory;
 import io.gomint.proxprox.network.SocketEventListener;
 import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
 import io.gomint.proxprox.scheduler.SyncTaskManager;
-import io.gomint.proxprox.commands.*;
 import io.netty.util.ResourceLeakDetector;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -86,9 +85,6 @@ public class ProxProx implements Proxy {
     // Player maps
     private Map<UUID, Player> players = new ConcurrentHashMap<>();
 
-    // Custom networking
-    private CustomProtocolChannels networkChannels;
-
     /**
      * Entrypoint to ProxProx. This should be only called from the Bootstrap so we can
      * be sure we have all Libs loaded which we need.
@@ -139,9 +135,6 @@ public class ProxProx implements Proxy {
         if ( !parseCommandLineArguments( args ) ) {
             System.exit( -1 );
         }
-
-        // Build up custom networking
-        this.networkChannels = new CustomProtocolChannels( this );
 
         // Load plugins
         File pluginDir = new File( "plugins/" );
@@ -312,11 +305,6 @@ public class ProxProx implements Proxy {
     @Override
     public Player getPlayer( UUID uuid ) {
         return this.players.get( uuid );
-    }
-
-    @Override
-    public CustomProtocolChannels getNetworkChannels() {
-        return this.networkChannels;
     }
 
     // ---------- Internal Player ADD / REMOVE -------------- //

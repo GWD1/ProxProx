@@ -13,7 +13,6 @@ import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
 import io.gomint.proxprox.api.event.ServerKickedPlayerEvent;
-import io.gomint.proxprox.api.network.Channel;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.api.network.PacketSender;
 import io.gomint.proxprox.jwt.JwtSignatureException;
@@ -31,7 +30,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
 import java.security.Key;
-import java.util.*;
+import java.util.Base64;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -55,6 +57,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private boolean manualClose;
 
     // Upstream
+    @Getter
     private UpstreamConnection upstreamConnection;
 
     // Proxy instance
@@ -235,22 +238,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         }
 
         this.upstreamConnection.getDebugger().addPacket( this.ip + ":" + this.port, "Proxy", packetId, buffer );
-
-        // Check if we are in custom protocol mode :D
-        if ( packetId == (byte) 0xFF ) {
-            PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
-            packetCustomProtocol.deserialize( buffer );
-
-            if ( packetCustomProtocol.getMode() == 2 ) {
-                Channel channel = this.proxProx.getNetworkChannels().channel( (byte) packetCustomProtocol.getChannel() );
-                if ( channel != null ) {
-                    channel.receivePacket( upstreamConnection, packetCustomProtocol.getData() );
-                }
-            }
-
-            return;
-        }
-
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
@@ -361,7 +348,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     e.printStackTrace();
                 }
 
-                logger.debug( "Encryption JWT public: " + keyDataBase64 );
+                logger.debug( "Encryption JWT public: {}", keyDataBase64 );
                 this.encryptionHandler = new EncryptionHandler();
                 this.encryptionHandler.setServerPublicKey( keyDataBase64 );
                 this.encryptionHandler.beginServersideEncryption( Base64.getDecoder().decode( (String) token.getClaim( "salt" ) ) );
@@ -384,13 +371,12 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 // The first spawn state must come through
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN ) {
-                    this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
+                    if ( this.upstreamConnection.isFirstServer() ) {
+                        this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
+                    }
+
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
-
-                    PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
-                    setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() );
-                    send( setChunkRadius );
                 }
 
                 break;
@@ -425,7 +411,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             default:
                 if ( this.upstreamConnection.getEntityRewriter() == null ) {
-                    logger.warn( "Unexpected packet " + Integer.toHexString( packetId & 0xFF ) + " before world init" );
+                    logger.warn( "Unexpected packet {} before world init", Integer.toHexString( packetId & 0xFF ) );
                 } else {
                     buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( this.ip + ":" + this.port, packetId, pos, buffer );
                 }
