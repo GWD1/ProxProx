@@ -22,7 +22,6 @@ import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
-import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -65,20 +64,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     // Entities
     private Set<Long> spawnedEntities = new HashSet<>();
-    @Getter
-    private float spawnX;
-    @Getter
-    private float spawnY;
-    @Getter
-    private float spawnZ;
-    @Getter
-    private float spawnYaw;
-    @Getter
-    private float spawnPitch;
-    @Getter
-    private int difficulty;
-    @Getter
-    private int gamemode;
+    @Getter private float spawnX;
+    @Getter private float spawnY;
+    @Getter private float spawnZ;
+    @Getter private float spawnYaw;
+    @Getter private float spawnPitch;
 
     /**
      * Create a new AbstractConnection to a server.
@@ -237,8 +227,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             buffer.readShort();
         }
 
-        logger.info( Integer.toHexString( packetId & 0xFF ) );
-        // this.upstreamConnection.getDebugger().addPacket( this.ip + ":" + this.port, "Proxy", packetId, buffer );
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
@@ -262,8 +250,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.spawnZ = startGame.getSpawnZ();
                 this.spawnYaw = startGame.getSpawnYaw();
                 this.spawnPitch = startGame.getSpawnPitch();
-                this.difficulty = startGame.getDifficulty();
-                this.gamemode = startGame.getGamemode();
 
                 if ( this.upstreamConnection.isFirstServer() ) {
                     buffer.setPosition( pos );
@@ -346,10 +332,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         logger.debug( "For server: Valid encryption start JWT" );
                     }
                 } catch ( JwtSignatureException e ) {
-                    e.printStackTrace();
+                    logger.error( "Invalid JWT signature from server: ", e );
                 }
 
-                logger.debug( "Encryption JWT public: {}", keyDataBase64 );
                 this.encryptionHandler = new EncryptionHandler();
                 this.encryptionHandler.setServerPublicKey( keyDataBase64 );
                 this.encryptionHandler.beginServersideEncryption( Base64.getDecoder().decode( (String) token.getClaim( "salt" ) ) );

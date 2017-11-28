@@ -25,11 +25,10 @@ import io.gomint.proxprox.debug.Debugger;
 import io.gomint.proxprox.inventory.ItemStack;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
-import io.gomint.proxprox.util.DumpUtil;
 import io.gomint.proxprox.util.EntityRewriter;
+import io.gomint.proxprox.util.Values;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.Setter;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
@@ -71,9 +70,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private boolean valid;
     private String xboxId;
     private JSONObject skinData;
-    @Getter private Debugger debugger;
+    @Getter
+    private Debugger debugger;
+    private boolean isWindows = false;
 
-    @Getter private EntityRewriter entityRewriter = new EntityRewriter();
+    @Getter
+    private EntityRewriter entityRewriter = new EntityRewriter();
     private int protocolVersion;
 
     // Last known good server
@@ -83,8 +85,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
-
     private String disconnect = null;
+
+    private float lastUpdatedT = 0;
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
@@ -250,6 +253,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 try {
                     skinToken.validateSignature( JwtAlgorithm.ES384, chainValidator.getTrustedKeys().get( skinToken.getHeader().getProperty( "x5u" ) ) );
                     this.skinData = skinToken.getClaims();
+                    this.isWindows = (Long) this.skinData.get( "DeviceOS" ) == 7;
                 } catch ( JwtSignatureException e ) {
                     e.printStackTrace();
                 }
@@ -286,7 +290,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.postProcessWorker.setEncryptionHandler( this.encryptionHandler );
 
                 send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
-                this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
 
                 // Send resource pack stuff
                 PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
@@ -310,6 +313,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         send( resourcePackStack );
                         break;
                     case COMPLETED:
+                        this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
                         break;
                 }
 
@@ -451,21 +455,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @param packet The packet which should be send
      */
     public void send( Packet packet ) {
-        PacketBuffer buffer = new PacketBuffer( 64 );
+        PacketBuffer buffer = new PacketBuffer( 4 );
         buffer.writeByte( packet.getId() );
         buffer.writeShort( (short) 0 );
         packet.serialize( buffer );
 
-        int oldPos = buffer.getPosition();
-        buffer.resetPosition();
-        this.debugger.addPacket( "UpStream", "Client", packet.getId(), buffer );
-        buffer.setPosition( oldPos );
-
-        if ( !( packet instanceof PacketBatch ) && packet.mustBeInBatch() ) {
-            this.packetQueue.add( buffer );
-        } else {
-            this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
-        }
+        this.packetQueue.add( buffer );
     }
 
     /**
@@ -600,14 +595,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         this.currentDownStream = downstreamConnection;
-
-        PacketSetDifficulty setDifficulty = new PacketSetDifficulty();
-        setDifficulty.setDifficulty( this.currentDownStream.getDifficulty() );
-        send( setDifficulty );
-
-        PacketSetGamemode gamemode = new PacketSetGamemode();
-        gamemode.setGameMode( this.currentDownStream.getGamemode() );
-        send( gamemode );
     }
 
     public void resetPendingDownStream() {
@@ -632,7 +619,19 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         return this.connection.isConnected();
     }
 
-    public void update() {
+    public void update( float dT ) {
+        if ( this.isWindows ) {
+            this.sendQueue();
+        } else {
+            this.lastUpdatedT += dT;
+            if ( this.lastUpdatedT >= Values.CLIENT_TICK_RATE ) {
+                this.sendQueue();
+                this.lastUpdatedT = 0;
+            }
+        }
+    }
+
+    private void sendQueue() {
         if ( !this.packetQueue.isEmpty() ) {
             List<PacketBuffer> buffers = new ArrayList<>();
             this.packetQueue.drainTo( buffers );

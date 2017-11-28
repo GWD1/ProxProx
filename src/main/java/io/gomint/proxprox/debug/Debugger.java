@@ -20,7 +20,7 @@ public class Debugger {
     private AtomicBoolean running = new AtomicBoolean( true );
 
     public Debugger( long guid ) {
-        File logFile = new File( "debug", guid + ".log" );
+        /*File logFile = new File( "debug", guid + ".log" );
         if ( !logFile.exists() ) {
             try {
                 if ( logFile.createNewFile() ) {
@@ -32,7 +32,7 @@ public class Debugger {
             } catch ( IOException e ) {
                 e.printStackTrace();
             }
-        }
+        }*/
     }
 
     private void startLogger() {
@@ -72,7 +72,7 @@ public class Debugger {
     }
 
     public void addPacket( String from, String to, byte packetId, PacketBuffer buffer ) {
-        StringBuilder builder = new StringBuilder( "[PKT] " ).append( from ).append( " -> " ).append( to );
+        /*StringBuilder builder = new StringBuilder( "[PKT] " ).append( from ).append( " -> " ).append( to );
         builder.append( " 0x" ).append( Integer.toHexString( packetId & 0xFF ) ).append( ": " );
 
         if ( buffer.getRemaining() > 64 ) {
@@ -91,7 +91,7 @@ public class Debugger {
         }
 
         buffer.setPosition( oldPosition );
-        addLine( builder.toString() );
+        addLine( builder.toString() );*/
     }
 
     public void removeEntity( String from, long oldId ) {
@@ -115,7 +115,7 @@ public class Debugger {
     }
 
     public void addCustomLine( String line ) {
-        addLine( line );
+        // addLine( line );
     }
 
 }

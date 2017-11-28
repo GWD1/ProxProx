@@ -206,14 +206,15 @@ public class ProxProx implements Proxy {
                 this.syncTaskManager.update( currentMillis, lastTickTime );
 
                 for ( Map.Entry<UUID, Player> entry : this.players.entrySet() ) {
-                    ( (UpstreamConnection) entry.getValue() ).update();
+                    ( (UpstreamConnection) entry.getValue() ).update( lastTickTime );
                 }
 
                 long diff = System.nanoTime() - start;
-                lastTickTime = (float) diff / 1000000.0F;
-
                 if ( diff < skipNanos ) {
                     tickCondition.await( skipNanos - diff, TimeUnit.NANOSECONDS );
+                    lastTickTime = (float) skipNanos / 1000000000.0F;
+                } else {
+                    lastTickTime = (float) diff / 1000000000.0F;
                 }
             } catch ( InterruptedException e ) {
                 // Ignored ._.
