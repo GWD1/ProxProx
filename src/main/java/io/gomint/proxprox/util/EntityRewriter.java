@@ -114,6 +114,26 @@ public class EntityRewriter {
                 this.debugger.addEntityRewrite( from, "UpStream", packetId, playerId, replacePlayerId );
 
                 break;
+
+            case 0x37:  // Adventure settings
+                int a = buffer.readUnsignedVarInt();
+                int b = buffer.readUnsignedVarInt();
+                int c = buffer.readUnsignedVarInt();
+                int d = buffer.readUnsignedVarInt();
+                int e = buffer.readUnsignedVarInt();
+                entityId = buffer.readLLong(); // Yes, a LE long
+                replacementID = getReplacementId( entityId );
+
+                buffer = new PacketBuffer( 8 );
+                buffer.writeUnsignedVarInt( a );
+                buffer.writeUnsignedVarInt( b );
+                buffer.writeUnsignedVarInt( c );
+                buffer.writeUnsignedVarInt( d );
+                buffer.writeUnsignedVarInt( e );
+                buffer.writeLLong( replacementID );
+                buffer.resetPosition();
+
+                break;
         }
 
         return buffer;

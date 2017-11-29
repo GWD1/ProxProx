@@ -25,6 +25,7 @@ import io.gomint.proxprox.debug.Debugger;
 import io.gomint.proxprox.inventory.ItemStack;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.util.EntityRewriter;
 import io.gomint.proxprox.util.Values;
 import lombok.EqualsAndHashCode;
@@ -622,12 +623,22 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     public void update( float dT ) {
         if ( this.isWindows ) {
             this.sendQueue();
-        } else {
-            this.lastUpdatedT += dT;
-            if ( this.lastUpdatedT >= Values.CLIENT_TICK_RATE ) {
+        }
+
+        this.lastUpdatedT += dT;
+        if ( this.lastUpdatedT >= Values.CLIENT_TICK_RATE ) {
+            if ( !this.isWindows ) {
                 this.sendQueue();
-                this.lastUpdatedT = 0;
             }
+
+            // Update downstream ping
+            if ( this.proxProx.getConfig().isUseTCP() && this.currentDownStream != null ) {
+                UpdatePingPacket pingPacket = new UpdatePingPacket();
+                pingPacket.setPing( (int) this.connection.getPing() );
+                this.currentDownStream.getTcpConnection().send( pingPacket );
+            }
+
+            this.lastUpdatedT = 0;
         }
     }
 

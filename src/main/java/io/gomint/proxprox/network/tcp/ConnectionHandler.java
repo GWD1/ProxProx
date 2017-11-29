@@ -2,7 +2,9 @@ package io.gomint.proxprox.network.tcp;
 
 import com.google.common.collect.MapMaker;
 import io.gomint.jraknet.PacketBuffer;
+import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.network.tcp.protocol.Packet;
+import io.gomint.proxprox.network.tcp.protocol.SendPlayerToServerPacket;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -27,12 +29,11 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     private Consumer<Throwable> exceptionCallback;
     private Consumer<Void> disconnectCallback;
 
-    public ConnectionHandler() {
-        super( true );
-    }
+    private final UpstreamConnection upstreamConnection;
 
-    public Channel getChannel() {
-        return ctx.channel();
+    ConnectionHandler( UpstreamConnection connection ) {
+        super( true );
+        this.upstreamConnection = connection;
     }
 
     @Override
@@ -73,6 +74,8 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     protected void channelRead0( ChannelHandlerContext channelHandlerContext, final Packet packet ) throws Exception {
         if ( packet instanceof WrappedMCPEPacket ) {
             this.dataAcceptor.accept( ( (WrappedMCPEPacket) packet ).getBuffer() );
+        } else if ( packet instanceof SendPlayerToServerPacket ) {
+            this.upstreamConnection.connect( ( (SendPlayerToServerPacket) packet ).getHost(), ( (SendPlayerToServerPacket) packet ).getPort() );
         }
     }
 
