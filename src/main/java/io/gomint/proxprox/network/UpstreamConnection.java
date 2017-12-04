@@ -43,6 +43,7 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.function.Function;
 
 /**
  * @author geNAZt
@@ -57,7 +58,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     // AbstractConnection stuff
     private final Connection connection;
-    private Thread connectionReadThread;
     private PostProcessWorker postProcessWorker;
     private BlockingQueue<PacketBuffer> packetQueue = new LinkedBlockingQueue<>();
 
@@ -111,40 +111,26 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         // Create thread for reading data
         this.postProcessWorker = new PostProcessWorker( connection );
-        this.connectionReadThread = this.proxProx.getNewClientConnectionThread( new Runnable() {
+        this.connection.addDataProcessor( new Function<EncapsulatedPacket, EncapsulatedPacket>() {
             @Override
-            public void run() {
-                Thread.currentThread().setName( "UpStream unknown (" + connection.getGuid() + ") [Packet Read/Rewrite]" );
-
-                while ( connection.isConnected() ) {
-                    EncapsulatedPacket data = connection.receive();
-                    if ( data == null ) {
-                        try {
-                            Thread.sleep( 10 );
-                        } catch ( InterruptedException e ) {
-                            e.printStackTrace();
-                        }
-
-                        continue;
-                    }
-
-                    PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
-                    if ( buffer.getRemaining() <= 0 ) {
-                        // Malformed packet:
-                        LOGGER.warn( "Got 0 length packet" );
-                        return;
-                    }
-
-                    // Do we want to handle it?
-                    try {
-                        handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
-                    } catch ( Throwable t ) {
-                        t.printStackTrace();
-                    }
+            public EncapsulatedPacket apply( EncapsulatedPacket data ) {
+                PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
+                if ( buffer.getRemaining() <= 0 ) {
+                    // Malformed packet:
+                    LOGGER.warn( "Got 0 length packet" );
+                    return data;
                 }
+
+                // Do we want to handle it?
+                try {
+                    handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
+                } catch ( Throwable t ) {
+                    LOGGER.warn( "Error in handling packet: ", t );
+                }
+
+                return null; // Skip further processing of this packet
             }
         } );
-        this.connectionReadThread.start();
     }
 
     @Override
@@ -582,7 +568,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Clean up pending
         this.pendingDownStream = null;
 
-        // Send Loggedin Event on first downstram connect
+        // Send logged in Event on first downstream connect
         if ( this.firstServer ) {
             this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
             this.firstServer = false;

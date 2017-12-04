@@ -61,7 +61,6 @@ public class ProxProx implements Proxy {
     private ProxyConfig config;
 
     // Thread pools
-    private ThreadFactory clientConnectionsThreadFactory = new ThreadFactoryBuilder().setNameFormat( "UpStream-Connection-%d" ).build();
     private ThreadFactory serverConnectionsThreadFactory = new ThreadFactoryBuilder().setNameFormat( "DownStream-Connection-%d" ).build();
 
     // Task scheduling
@@ -259,22 +258,12 @@ public class ProxProx implements Proxy {
                     return false;
                 }
             } else {
-                logger.error( "Unknown command line option '" + args[i] + "'" );
+                logger.error( "Unknown command line option '{}'", args[i] );
                 return false;
             }
         }
 
         return true;
-    }
-
-    /**
-     * Create a new thread for a UpStreamConnection
-     *
-     * @param runnable The runnable which should be executed
-     * @return New Thread with the runnable loaded, ready to start
-     */
-    public Thread getNewClientConnectionThread( Runnable runnable ) {
-        return clientConnectionsThreadFactory.newThread( runnable );
     }
 
     /**
