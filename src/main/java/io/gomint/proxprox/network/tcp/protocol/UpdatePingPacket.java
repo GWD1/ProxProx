@@ -17,12 +17,12 @@ public class UpdatePingPacket extends Packet {
     }
 
     @Override
-    public void read( ByteBuf buf ) {
+    public void write( ByteBuf buf ) {
         buf.writeInt( this.ping );
     }
 
     @Override
-    public void write( ByteBuf buf ) {
+    public void read( ByteBuf buf ) {
         this.ping = buf.readInt();
     }
 

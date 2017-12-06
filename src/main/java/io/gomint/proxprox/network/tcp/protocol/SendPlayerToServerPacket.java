@@ -20,14 +20,14 @@ public class SendPlayerToServerPacket extends Packet {
     }
 
     @Override
-    public void read( ByteBuf buf ) {
+    public void write( ByteBuf buf ) {
         buf.writeInt( this.host.length() );
         buf.writeBytes( this.host.getBytes( Charset.forName( "UTF-8" ) ) );
         buf.writeInt( this.port );
     }
 
     @Override
-    public void write( ByteBuf buf ) {
+    public void read( ByteBuf buf ) {
         int hostLength = buf.readInt();
         byte[] hostData = new byte[hostLength];
         buf.readBytes( hostData );
