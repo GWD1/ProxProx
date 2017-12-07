@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox.api.entity;
 
+import com.google.common.util.concurrent.ListenableFuture;
 import io.gomint.proxprox.api.command.CommandSender;
 
 import java.net.InetAddress;
@@ -26,7 +27,14 @@ public interface Player extends CommandSender {
 
     Server getServer();
 
-    void connect( String ip, int port );
+    /**
+     * Connect to a new DownStream server
+     *
+     * @param ip   The ip of the server
+     * @param port The port of the server
+     * @return future which gets resolved when connected
+     */
+    ListenableFuture<Void> connect( String ip, int port );
 
     boolean isValid();
 

@@ -74,4 +74,6 @@ public class Protocol {
     public static final byte PACKET_SET_DIFFICULTY = (byte) 0x3C;
     public static final byte PACKET_SET_GAMEMODE = (byte) 0x3E;
 
+    public static final byte PACKET_CHUNK_RADIUS_REQUEST = (byte) 0x45;
+
 }

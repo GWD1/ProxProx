@@ -7,6 +7,8 @@
 
 package io.gomint.proxprox.network;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.SettableFuture;
 import io.gomint.jraknet.Connection;
 import io.gomint.jraknet.EncapsulatedPacket;
 import io.gomint.jraknet.PacketBuffer;
@@ -36,12 +38,14 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Function;
 
@@ -64,6 +68,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Downstream
     private DownstreamConnection currentDownStream;
     private DownstreamConnection pendingDownStream;
+    private SettableFuture<Void> pendingFuture;
 
     // User data
     private UUID uuid;
@@ -238,7 +243,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 JwtToken skinToken = JwtToken.parse( new String( skin ) );
 
                 try {
-                    skinToken.validateSignature( JwtAlgorithm.ES384, chainValidator.getTrustedKeys().get( skinToken.getHeader().getProperty( "x5u" ) ) );
+                    skinToken.validateSignature( JwtAlgorithm.ES384, chainValidator.getClientPublicKey() );
                     this.skinData = skinToken.getClaims();
                     this.isWindows = (Long) this.skinData.get( "DeviceOS" ) == 7;
                 } catch ( JwtSignatureException e ) {
@@ -300,7 +305,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         send( resourcePackStack );
                         break;
                     case COMPLETED:
-                        this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
+                        try {
+                            this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() ).get();
+                        } catch ( InterruptedException | ExecutionException e ) {
+                            LOGGER.error( "Could not connect to default server: ", e );
+                        }
+
                         break;
                 }
 
@@ -316,15 +326,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
     }
 
-    /**
-     * Connect to a new DownStream server
-     *
-     * @param ip   The ip of the server
-     * @param port The port of the server
-     */
-    public void connect( String ip, int port ) {
+    @Override
+    public ListenableFuture<Void> connect( String ip, int port ) {
         // Event first
         PlayerSwitchEvent switchEvent = this.proxProx.getPluginManager().callEvent( new PlayerSwitchEvent( this, this.currentDownStream, new ServerDataHolder( ip, port ) ) );
+
+        if ( this.pendingFuture != null ) {
+            this.pendingFuture.setException( new IOException( "Connection got overwritten by a second connect call" ) );
+            this.pendingFuture = null;
+        }
 
         // Check if we have a pending connection
         if ( this.pendingDownStream != null ) {
@@ -335,6 +345,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         this.debugger.addCustomLine( "[CONN] New connection to " + switchEvent.getTo().getIP() + ":" + switchEvent.getTo().getPort() );
         this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
+        this.pendingFuture = SettableFuture.create();
+        return this.pendingFuture;
     }
 
     public void sendPlayState( PacketPlayState.PlayState state ) {
@@ -447,7 +459,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         buffer.writeShort( (short) 0 );
         packet.serialize( buffer );
 
-        this.packetQueue.add( buffer );
+        if ( packet.mustBeInBatch() ) {
+            this.packetQueue.add( buffer );
+        } else {
+            this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
+        }
     }
 
     /**
@@ -568,6 +584,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Clean up pending
         this.pendingDownStream = null;
 
+        // Fire future
+        if ( this.pendingFuture != null ) {
+            this.pendingFuture.set( null );
+            this.pendingFuture = null;
+        }
+
         // Send logged in Event on first downstream connect
         if ( this.firstServer ) {
             this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
@@ -585,6 +607,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void resetPendingDownStream() {
+        if ( this.pendingFuture != null ) {
+            this.pendingFuture.setException( new IOException( "Connection got reset" ) );
+            this.pendingFuture = null;
+        }
+
         this.pendingDownStream = null;
     }
 
