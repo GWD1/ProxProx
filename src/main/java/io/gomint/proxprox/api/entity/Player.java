@@ -32,9 +32,8 @@ public interface Player extends CommandSender {
      *
      * @param ip   The ip of the server
      * @param port The port of the server
-     * @return future which gets resolved when connected
      */
-    ListenableFuture<Void> connect( String ip, int port );
+    void connect( String ip, int port );
 
     boolean isValid();
 

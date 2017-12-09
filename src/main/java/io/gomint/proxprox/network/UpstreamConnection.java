@@ -68,7 +68,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Downstream
     private DownstreamConnection currentDownStream;
     private DownstreamConnection pendingDownStream;
-    private SettableFuture<Void> pendingFuture;
 
     // User data
     private UUID uuid;
@@ -305,12 +304,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         send( resourcePackStack );
                         break;
                     case COMPLETED:
-                        try {
-                            this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() ).get();
-                        } catch ( InterruptedException | ExecutionException e ) {
-                            LOGGER.error( "Could not connect to default server: ", e );
-                        }
-
+                        this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
                         break;
                 }
 
@@ -327,14 +321,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     @Override
-    public ListenableFuture<Void> connect( String ip, int port ) {
+    public void connect( String ip, int port ) {
         // Event first
         PlayerSwitchEvent switchEvent = this.proxProx.getPluginManager().callEvent( new PlayerSwitchEvent( this, this.currentDownStream, new ServerDataHolder( ip, port ) ) );
-
-        if ( this.pendingFuture != null ) {
-            this.pendingFuture.setException( new IOException( "Connection got overwritten by a second connect call" ) );
-            this.pendingFuture = null;
-        }
 
         // Check if we have a pending connection
         if ( this.pendingDownStream != null ) {
@@ -345,8 +334,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         this.debugger.addCustomLine( "[CONN] New connection to " + switchEvent.getTo().getIP() + ":" + switchEvent.getTo().getPort() );
         this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
-        this.pendingFuture = SettableFuture.create();
-        return this.pendingFuture;
     }
 
     public void sendPlayState( PacketPlayState.PlayState state ) {
@@ -584,12 +571,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Clean up pending
         this.pendingDownStream = null;
 
-        // Fire future
-        if ( this.pendingFuture != null ) {
-            this.pendingFuture.set( null );
-            this.pendingFuture = null;
-        }
-
         // Send logged in Event on first downstream connect
         if ( this.firstServer ) {
             this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
@@ -607,11 +588,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void resetPendingDownStream() {
-        if ( this.pendingFuture != null ) {
-            this.pendingFuture.setException( new IOException( "Connection got reset" ) );
-            this.pendingFuture = null;
-        }
-
         this.pendingDownStream = null;
     }
 
