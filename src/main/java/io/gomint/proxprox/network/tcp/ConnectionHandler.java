@@ -14,9 +14,7 @@ import io.netty.channel.SimpleChannelInboundHandler;
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
@@ -104,7 +102,11 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
 
     public void disconnect() {
         try {
-            this.ctx.disconnect().sync();
+            try {
+                this.ctx.disconnect().get( 500, TimeUnit.MILLISECONDS );
+            } catch ( ExecutionException | TimeoutException e ) {
+                e.printStackTrace();
+            }
         } catch ( InterruptedException e ) {
             e.printStackTrace();
         }
