@@ -45,12 +45,12 @@ public class MojangLoginForger {
 
         System.out.println( publicKeyBase64 );
 
-        long timestamp = System.currentTimeMillis();
+        long timestamp = System.currentTimeMillis() / 1000;
 
         JSONObject claims = new JSONObject();
-        claims.put( "nbf", timestamp );
-        claims.put( "exp", timestamp + 24 * 60 * 60 * 1000 );
-        claims.put( "iat", timestamp + 24 * 60 * 60 * 1000 );
+        claims.put( "nbf", timestamp - 1 );
+        claims.put( "exp", timestamp + 24 * 60 * 60 );
+        claims.put( "iat", timestamp + 24 * 60 * 60 );
         claims.put( "iss", "self" );
         claims.put( "certificateAuthority", true );
         // claims.put( "randomNonce", ThreadLocalRandom.current().nextInt() );

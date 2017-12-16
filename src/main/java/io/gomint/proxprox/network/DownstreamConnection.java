@@ -52,7 +52,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private ClientSocket connection;
     private Thread connectionReadThread;
     private PostProcessWorker postProcessWorker;
-    @Getter private ConnectionHandler tcpConnection;
+    @Getter
+    private ConnectionHandler tcpConnection;
     private boolean manualClose;
 
     // Upstream
@@ -64,11 +65,16 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     // Entities
     private Set<Long> spawnedEntities = new HashSet<>();
-    @Getter private float spawnX;
-    @Getter private float spawnY;
-    @Getter private float spawnZ;
-    @Getter private float spawnYaw;
-    @Getter private float spawnPitch;
+    @Getter
+    private float spawnX;
+    @Getter
+    private float spawnY;
+    @Getter
+    private float spawnZ;
+    @Getter
+    private float spawnYaw;
+    @Getter
+    private float spawnPitch;
 
     /**
      * Create a new AbstractConnection to a server.
@@ -212,7 +218,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         return;
                     }
 
-                    handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
+                    try {
+                        handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
+                    } catch ( Throwable t ) {
+                        t.printStackTrace();
+                    }
                 }
             }
         } );
@@ -226,6 +236,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         if ( packetId != Protocol.PACKET_BATCH ) {
             buffer.readShort();
         }
+
+        System.out.println( Integer.toHexString( packetId & 0xff ) );
 
         int pos = buffer.getPosition();
 
@@ -360,6 +372,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     if ( this.upstreamConnection.isFirstServer() ) {
                         this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
                     }
+
+                    // Send chunk radius
+
 
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
