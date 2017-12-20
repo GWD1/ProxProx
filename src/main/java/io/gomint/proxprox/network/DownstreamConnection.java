@@ -237,8 +237,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             buffer.readShort();
         }
 
-        System.out.println( Integer.toHexString( packetId & 0xff ) );
-
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
@@ -270,6 +268,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     this.upstreamConnection.move( this.getSpawnX(), this.getSpawnY(), this.getSpawnZ(),
                             this.getSpawnYaw(), this.getSpawnPitch() );
                 }
+
+                PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
+                setChunkRadius.setChunkRadius( 4 );
+                send( setChunkRadius );
 
                 break;
 

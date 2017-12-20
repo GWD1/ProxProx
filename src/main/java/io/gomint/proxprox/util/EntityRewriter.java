@@ -47,6 +47,27 @@ public class EntityRewriter {
         // Entity ID rewrites
         long entityId;
         switch ( packetId ) {
+            case 0x4a:  // Boss event
+                entityId = buffer.readSignedVarInt();
+                long replacementID = getReplacementId( entityId );
+
+                if ( entityId != replacementID ) {
+                    byte[] data = new byte[buffer.getRemaining()];
+                    buffer.readBytes( data );
+
+                    buffer = new PacketBuffer( 8 );
+                    buffer.writeSignedVarLong( replacementID );
+                    buffer.writeBytes( data );
+                    buffer.resetPosition();
+
+
+                    this.debugger.addEntityRewrite( from, "UpStream", packetId, entityId, replacementID );
+                } else {
+                    buffer.setPosition( pos );
+                }
+
+                break;
+
             case 0x28:  // Entity motion
             case 0x1f:  // Mob equip
             case 0x20:  // Mob Armor
@@ -57,7 +78,7 @@ public class EntityRewriter {
             case 0x1D:  // Update attributes
             case 0x1C:  // Mob effect
                 entityId = buffer.readUnsignedVarLong();
-                long replacementID = getReplacementId( entityId );
+                replacementID = getReplacementId( entityId );
 
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
@@ -176,6 +197,27 @@ public class EntityRewriter {
         long entityId;
 
         switch ( packetId ) {
+            case 0x4a:  // Boss event
+                entityId = buffer.readSignedVarInt();
+                long replacementID = getReplacementId( entityId );
+
+                if ( entityId != replacementID ) {
+                    byte[] data = new byte[buffer.getRemaining()];
+                    buffer.readBytes( data );
+
+                    buffer = new PacketBuffer( 8 );
+                    buffer.writeSignedVarLong( replacementID );
+                    buffer.writeBytes( data );
+                    buffer.resetPosition();
+
+
+                    this.debugger.addEntityRewrite( "UpStream", to, packetId, entityId, replacementID );
+                } else {
+                    buffer.setPosition( pos );
+                }
+
+                break;
+
             case 0x1f:
             case 0x20:
             case 0x13: // Move player
@@ -183,7 +225,7 @@ public class EntityRewriter {
             case 0x1B: // Entity Event
             case 0x24: // Player action
                 entityId = buffer.readUnsignedVarLong();
-                long replacementID = getReplacementIdForServer( entityId );
+                replacementID = getReplacementIdForServer( entityId );
 
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
