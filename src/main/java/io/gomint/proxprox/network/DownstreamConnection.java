@@ -412,6 +412,18 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 break;
 
+            case Protocol.PACKET_TRANSFER:
+                if ( this.equals( upstreamConnection.getDownStream() ) ) {
+                    String host = buffer.readString();
+                    short port = buffer.readLShort();
+
+                    this.upstreamConnection.connect( host, port );
+                } else {
+                    this.upstreamConnection.send( packetId, buffer );
+                }
+
+                break;
+
             default:
                 buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( this.ip + ":" + this.port, packetId, pos, buffer );
                 this.upstreamConnection.send( packetId, buffer );
