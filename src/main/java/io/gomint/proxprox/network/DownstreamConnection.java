@@ -42,7 +42,7 @@ import java.util.function.Consumer;
 @EqualsAndHashCode( of = { "ip", "port" }, callSuper = false )
 public class DownstreamConnection extends AbstractConnection implements Server, PacketSender {
 
-    private static final Logger logger = LoggerFactory.getLogger( DownstreamConnection.class );
+    private static final Logger LOGGER = LoggerFactory.getLogger( DownstreamConnection.class );
 
     // Needed connection data to reach the server
     private String ip;
@@ -110,7 +110,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                             @Override
                             public void accept( Void aVoid ) {
                                 if ( upstreamConnection.isConnected() ) {
-                                    logger.info( "Disconnected downstream..." );
+                                    LOGGER.info( "Disconnected downstream..." );
                                     if ( !DownstreamConnection.this.manualClose ) {
                                         DownstreamConnection.this.close( true );
 
@@ -144,7 +144,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    logger.debug( "Got socketEvent: " + socketEvent.getType().name() );
+                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
                     switch ( socketEvent.getType() ) {
                         case CONNECTION_ATTEMPT_SUCCEEDED:
                             // We got accepted *yay*
@@ -154,7 +154,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                         case CONNECTION_CLOSED:
                         case CONNECTION_DISCONNECTED:
-                            logger.info( "Disconnected downstream..." );
+                            LOGGER.info( "Disconnected downstream..." );
                             if ( !DownstreamConnection.this.manualClose ) {
                                 DownstreamConnection.this.close( true );
 
@@ -199,7 +199,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 // Give a better name
                 Thread.currentThread().setName( "DownStream " + upstreamConnection.getUUID() + " -> " + ip + ":" + port + " [Packet Read/Rewrite]" );
 
-                logger.debug( "Connection status: " + connection.getConnection().isConnected() );
+                LOGGER.debug( "Connection status: " + connection.getConnection().isConnected() );
                 while ( connection.getConnection() != null && connection.getConnection().isConnected() ) {
                     EncapsulatedPacket data = connection.getConnection().receive();
                     if ( data == null ) {
@@ -343,10 +343,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 try {
                     if ( token.validateSignature( key ) ) {
-                        logger.debug( "For server: Valid encryption start JWT" );
+                        LOGGER.debug( "For server: Valid encryption start JWT" );
                     }
                 } catch ( JwtSignatureException e ) {
-                    logger.error( "Invalid JWT signature from server: ", e );
+                    LOGGER.error( "Invalid JWT signature from server: ", e );
                 }
 
                 this.encryptionHandler = new EncryptionHandler();
@@ -437,6 +437,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     void close( boolean fireEvent ) {
         this.manualClose = true;
 
+        LOGGER.info( "Player {} disconnected from server {}", this.upstreamConnection, this );
+
         if ( ( this.tcpConnection != null || this.connection != null ) && fireEvent ) {
             ServerKickedPlayerEvent serverKickedPlayerEvent = new ServerKickedPlayerEvent( this.upstreamConnection, this );
             ProxProx.instance.getPluginManager().callEvent( serverKickedPlayerEvent );
@@ -456,12 +458,21 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     }
 
     public void disconnect( String reason ) {
-        if ( this.connection != null && this.connection.getConnection() != null ) {
-            logger.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
+        LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
+        if ( this.connection != null && this.connection.getConnection() != null ) {
             this.connection.getConnection().disconnect( reason );
-            this.connection.close();
-        } else if ( this.tcpConnection != null ) {
+
+            if ( this.connection != null ) {
+                this.connection.close();
+            }
+
+            if ( this.connectionReadThread != null ) {
+                this.connectionReadThread.interrupt();
+            }
+        }
+
+        if ( this.tcpConnection != null ) {
             this.tcpConnection.disconnect();
         }
     }
