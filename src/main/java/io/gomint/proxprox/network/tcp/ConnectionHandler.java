@@ -103,7 +103,7 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     public void disconnect() {
         try {
             try {
-                this.ctx.disconnect().get( 500, TimeUnit.MILLISECONDS );
+                this.ctx.close().get( 500, TimeUnit.MILLISECONDS );
             } catch ( ExecutionException | TimeoutException e ) {
                 e.printStackTrace();
             }
