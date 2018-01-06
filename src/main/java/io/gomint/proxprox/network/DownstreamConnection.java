@@ -27,6 +27,7 @@ import lombok.Getter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ObjectInputStream;
 import java.net.SocketException;
 import java.security.Key;
 import java.util.Base64;
@@ -239,6 +240,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         int pos = buffer.getPosition();
 
+        LOGGER.debug( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
+
         // Minimalistic protocol
         switch ( packetId ) {
             case Protocol.PACKET_BATCH:
@@ -446,14 +449,17 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         if ( this.tcpConnection != null ) {
             this.tcpConnection.disconnect();
+            this.tcpConnection = null;
         }
 
         if ( this.connection != null ) {
             this.connection.close();
+            this.connection = null;
         }
 
         if ( this.connectionReadThread != null ) {
             this.connectionReadThread.interrupt();
+            this.connectionReadThread = null;
         }
     }
 

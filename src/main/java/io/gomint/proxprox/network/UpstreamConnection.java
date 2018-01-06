@@ -418,7 +418,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         byteBuffer.put( skin.getBytes() );
 
         PacketLogin packetClientHandshake = new PacketLogin();
-        packetClientHandshake.setProtocol( protocolVersion );
+        packetClientHandshake.setProtocol( this.protocolVersion );
         packetClientHandshake.setPayload( byteBuffer.array() );
         downstreamConnection.send( packetClientHandshake );
     }
@@ -651,6 +651,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.currentDownStream = null;
             }
         }
+    }
+
+    public void resetDownStream() {
+        this.currentDownStream = null;
     }
 
 }

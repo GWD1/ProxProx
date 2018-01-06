@@ -306,7 +306,7 @@ public class ProxProx implements Proxy {
         this.players.remove( upstreamConnection.getUUID() );
 
         PlayerQuitEvent quitEvent = new PlayerQuitEvent( upstreamConnection );
-        pluginManager.callEvent( quitEvent );
+        this.pluginManager.callEvent( quitEvent );
     }
 
     /**
