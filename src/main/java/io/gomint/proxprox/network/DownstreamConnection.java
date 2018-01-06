@@ -471,15 +471,18 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             if ( this.connection != null ) {
                 this.connection.close();
+                this.connection = null;
             }
 
             if ( this.connectionReadThread != null ) {
                 this.connectionReadThread.interrupt();
+                this.connectionReadThread = null;
             }
         }
 
         if ( this.tcpConnection != null ) {
             this.tcpConnection.disconnect();
+            this.tcpConnection = null;
         }
     }
 
