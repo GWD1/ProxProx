@@ -52,7 +52,9 @@ public class EventBus {
                 }
 
                 try {
+                    logger.debug( "Calling {} with object {}", method.getListener(), event );
                     method.invoke( event );
+                    logger.debug( "Event listener finished execution" );
                 } catch ( IllegalAccessException ex ) {
                     logger.warn( "Method became inaccessible: " + event, ex );
                 } catch ( IllegalArgumentException ex ) {

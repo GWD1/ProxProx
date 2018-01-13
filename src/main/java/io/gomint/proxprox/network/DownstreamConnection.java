@@ -7,7 +7,6 @@
 
 package io.gomint.proxprox.network;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.*;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
@@ -219,6 +218,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         int pos = buffer.getPosition();
 
+        LOGGER.debug( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
+
         // Minimalistic protocol
         switch ( packetId ) {
             case Protocol.PACKET_BATCH:
@@ -414,6 +415,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     void close( boolean fireEvent ) {
         this.manualClose = true;
 
+        LOGGER.info( "Player {} disconnected from server {}", this.upstreamConnection, this );
+
         if ( ( this.tcpConnection != null || this.connection != null ) && fireEvent ) {
             ServerKickedPlayerEvent serverKickedPlayerEvent = new ServerKickedPlayerEvent( this.upstreamConnection, this );
             ProxProx.instance.getPluginManager().callEvent( serverKickedPlayerEvent );
@@ -421,21 +424,32 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         if ( this.tcpConnection != null ) {
             this.tcpConnection.disconnect();
+            this.tcpConnection = null;
         }
 
         if ( this.connection != null ) {
             this.connection.close();
+            this.connection = null;
         }
     }
 
     public void disconnect( String reason ) {
+        LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
+
         if ( this.connection != null && this.connection.getConnection() != null ) {
             LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
             this.connection.getConnection().disconnect( reason );
-            this.connection.close();
-        } else if ( this.tcpConnection != null ) {
+
+            if ( this.connection != null ) {
+                this.connection.close();
+                this.connection = null;
+            }
+        }
+
+        if ( this.tcpConnection != null ) {
             this.tcpConnection.disconnect();
+            this.tcpConnection = null;
         }
     }
 

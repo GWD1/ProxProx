@@ -330,7 +330,7 @@ public class PluginManager implements io.gomint.proxprox.api.plugin.PluginManage
      */
     public <T extends Event> T callEvent( T event ) {
         Preconditions.checkNotNull( event, "event" );
-        return eventBus.post( event );
+        return this.eventBus.post( event );
     }
 
     /**

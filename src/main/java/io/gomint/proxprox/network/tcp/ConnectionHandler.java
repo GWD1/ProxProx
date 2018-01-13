@@ -10,6 +10,8 @@ import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.EventLoop;
 import io.netty.channel.SimpleChannelInboundHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
@@ -20,11 +22,11 @@ import java.util.function.Consumer;
 
 public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger( ConnectionHandler.class );
     private ChannelHandlerContext ctx;
 
     private Consumer<Void> whenConnected;
     private Consumer<PacketBuffer> dataAcceptor;
-    private Consumer<Throwable> exceptionCallback;
     private Consumer<Void> disconnectCallback;
 
     private final UpstreamConnection upstreamConnection;
@@ -79,9 +81,7 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
 
     @Override
     public void exceptionCaught( ChannelHandlerContext ctx, Throwable cause ) throws Exception {
-        if ( this.exceptionCallback != null ) {
-            this.exceptionCallback.accept( cause );
-        }
+        LOGGER.error( "Caught exception in connection handling: ", cause );
     }
 
     public void onData( Consumer<PacketBuffer> consumer ) {
@@ -92,23 +92,15 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
         this.whenConnected = callback;
     }
 
-    public void onException( Consumer<Throwable> callback ) {
-        this.exceptionCallback = callback;
-    }
-
     public void whenDisconnected( Consumer<Void> callback ) {
         this.disconnectCallback = callback;
     }
 
     public void disconnect() {
         try {
-            try {
-                this.ctx.disconnect().get( 500, TimeUnit.MILLISECONDS );
-            } catch ( ExecutionException | TimeoutException e ) {
-                e.printStackTrace();
-            }
-        } catch ( InterruptedException e ) {
-            e.printStackTrace();
+            this.ctx.close().get( 1, TimeUnit.SECONDS );
+        } catch ( InterruptedException | ExecutionException | TimeoutException e ) {
+            LOGGER.error( "Could not close connection: ", e );
         }
     }
 
