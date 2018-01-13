@@ -6,6 +6,8 @@ import io.gomint.jraknet.PacketReliability;
 import io.gomint.proxprox.network.protocol.PacketBatch;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -19,6 +21,8 @@ import java.util.zip.Deflater;
  */
 @RequiredArgsConstructor
 public class PostProcessWorker {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger( PostProcessWorker.class );
 
     private final BatchStreamHolder batchHolder = new BatchStreamHolder();
     private final Connection connection;

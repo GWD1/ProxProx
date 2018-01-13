@@ -153,7 +153,6 @@ public class ProxProx implements Proxy {
         // Bind upstream UDP Raknet
         this.serverSocket = new ServerSocket( 10000 );
         this.serverSocket.setMojangModificationEnabled( true );
-        this.serverSocket.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "jRaknet-Upstream-%d" ).build() );
 
         this.socketEventListener = new SocketEventListener( this );
         this.serverSocket.setEventHandler( this.socketEventListener );
@@ -264,16 +263,6 @@ public class ProxProx implements Proxy {
         }
 
         return true;
-    }
-
-    /**
-     * Create a new thread for a DownStreamConnection
-     *
-     * @param runnable The runnable which should be executed
-     * @return New Thread with the runnable loaded, ready to start
-     */
-    public Thread getNewServerConnectionThread( Runnable runnable ) {
-        return serverConnectionsThreadFactory.newThread( runnable );
     }
 
     /**

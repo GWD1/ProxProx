@@ -7,8 +7,6 @@
 
 package io.gomint.proxprox.network;
 
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.SettableFuture;
 import io.gomint.jraknet.Connection;
 import io.gomint.jraknet.EncapsulatedPacket;
 import io.gomint.jraknet.PacketBuffer;
@@ -38,14 +36,12 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.function.Function;
 
@@ -122,7 +118,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 if ( buffer.getRemaining() <= 0 ) {
                     // Malformed packet:
                     LOGGER.warn( "Got 0 length packet" );
-                    return data;
+                    return null;
                 }
 
                 // Do we want to handle it?

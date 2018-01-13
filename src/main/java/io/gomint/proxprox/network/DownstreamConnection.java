@@ -29,11 +29,9 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
 import java.security.Key;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * @author geNAZt
@@ -42,7 +40,7 @@ import java.util.function.Consumer;
 @EqualsAndHashCode( of = { "ip", "port" }, callSuper = false )
 public class DownstreamConnection extends AbstractConnection implements Server, PacketSender {
 
-    private static final Logger logger = LoggerFactory.getLogger( DownstreamConnection.class );
+    private static final Logger LOGGER = LoggerFactory.getLogger( DownstreamConnection.class );
 
     // Needed connection data to reach the server
     private String ip;
@@ -50,7 +48,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     // Client connection
     private ClientSocket connection;
-    private Thread connectionReadThread;
     private PostProcessWorker postProcessWorker;
     @Getter
     private ConnectionHandler tcpConnection;
@@ -64,7 +61,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private ProxProx proxProx;
 
     // Entities
-    private Set<Long> spawnedEntities = new HashSet<>();
+    private Set<Long> spawnedEntities = Collections.synchronizedSet( new HashSet<>() );
     @Getter
     private float spawnX;
     @Getter
@@ -84,7 +81,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
      * @param ip                 The ip of the server we want to connect to
      * @param port               The port of the server we want to connect to
      */
-    public DownstreamConnection( ProxProx proxProx, UpstreamConnection upstreamConnection, String ip, int port ) {
+    DownstreamConnection( ProxProx proxProx, UpstreamConnection upstreamConnection, String ip, int port ) {
         this.upstreamConnection = upstreamConnection;
         this.proxProx = proxProx;
 
@@ -110,7 +107,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                             @Override
                             public void accept( Void aVoid ) {
                                 if ( upstreamConnection.isConnected() ) {
-                                    logger.info( "Disconnected downstream..." );
+                                    LOGGER.info( "Disconnected downstream..." );
                                     if ( !DownstreamConnection.this.manualClose ) {
                                         DownstreamConnection.this.close( true );
 
@@ -134,17 +131,16 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 } );
                 bootstrap.connect( this.ip, this.port ).sync();
             } catch ( InterruptedException e ) {
-                e.printStackTrace();
+                LOGGER.warn( "Could not connect to {}:{}", this.ip, this.port, e );
                 this.upstreamConnection.resetPendingDownStream();
             }
         } else {
             this.connection = new ClientSocket();
             this.connection.setMojangModificationEnabled( true );
-            this.connection.setEventLoopFactory( new ThreadFactoryBuilder().setNameFormat( "DownStream " + this.upstreamConnection.getUUID() + " -> " + this.ip + ":" + this.port ).build() );
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    logger.debug( "Got socketEvent: " + socketEvent.getType().name() );
+                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
                     switch ( socketEvent.getType() ) {
                         case CONNECTION_ATTEMPT_SUCCEEDED:
                             // We got accepted *yay*
@@ -154,7 +150,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                         case CONNECTION_CLOSED:
                         case CONNECTION_DISCONNECTED:
-                            logger.info( "Disconnected downstream..." );
+                            LOGGER.info( "Disconnected downstream..." );
                             if ( !DownstreamConnection.this.manualClose ) {
                                 DownstreamConnection.this.close( true );
 
@@ -181,7 +177,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             try {
                 this.connection.initialize();
             } catch ( SocketException e ) {
-                e.printStackTrace();
+                LOGGER.warn( "Could not connect to {}:{}", this.ip, this.port, e );
             }
 
             this.connection.connect( ip, port );
@@ -193,40 +189,24 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         super.setup();
 
         this.postProcessWorker = new PostProcessWorker( this.getConnection() );
-        this.connectionReadThread = this.proxProx.getNewServerConnectionThread( new Runnable() {
+        this.connection.getConnection().addDataProcessor( new Function<EncapsulatedPacket, EncapsulatedPacket>() {
             @Override
-            public void run() {
-                // Give a better name
-                Thread.currentThread().setName( "DownStream " + upstreamConnection.getUUID() + " -> " + ip + ":" + port + " [Packet Read/Rewrite]" );
-
-                logger.debug( "Connection status: " + connection.getConnection().isConnected() );
-                while ( connection.getConnection() != null && connection.getConnection().isConnected() ) {
-                    EncapsulatedPacket data = connection.getConnection().receive();
-                    if ( data == null ) {
-                        try {
-                            Thread.sleep( 10 );
-                        } catch ( InterruptedException e ) {
-                            e.printStackTrace();
-                        }
-
-                        continue;
-                    }
-
-                    PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
-                    if ( buffer.getRemaining() <= 0 ) {
-                        // Malformed packet:
-                        return;
-                    }
-
-                    try {
-                        handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
-                    } catch ( Throwable t ) {
-                        t.printStackTrace();
-                    }
+            public EncapsulatedPacket apply( EncapsulatedPacket data ) {
+                PacketBuffer buffer = new PacketBuffer( data.getPacketData(), 0 );
+                if ( buffer.getRemaining() <= 0 ) {
+                    // Malformed packet:
+                    return null;
                 }
+
+                try {
+                    handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
+                } catch ( Throwable t ) {
+                    LOGGER.error( "Error whilst handling packet: ", t );
+                }
+
+                return null;
             }
         } );
-        this.connectionReadThread.start();
     }
 
     @Override
@@ -343,10 +323,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 try {
                     if ( token.validateSignature( key ) ) {
-                        logger.debug( "For server: Valid encryption start JWT" );
+                        LOGGER.debug( "For server: Valid encryption start JWT" );
                     }
                 } catch ( JwtSignatureException e ) {
-                    logger.error( "Invalid JWT signature from server: ", e );
+                    LOGGER.error( "Invalid JWT signature from server: ", e );
                 }
 
                 this.encryptionHandler = new EncryptionHandler();
@@ -413,11 +393,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 break;
 
             case Protocol.PACKET_TRANSFER:
-                if ( this.equals( upstreamConnection.getDownStream() ) ) {
-                    String host = buffer.readString();
-                    short port = buffer.readLShort();
-
-                    this.upstreamConnection.connect( host, port );
+                if ( this.equals( this.upstreamConnection.getDownStream() ) ) {
+                    this.upstreamConnection.connect( buffer.readString(), buffer.readLShort() );
                 } else {
                     this.upstreamConnection.send( packetId, buffer );
                 }
@@ -449,15 +426,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         if ( this.connection != null ) {
             this.connection.close();
         }
-
-        if ( this.connectionReadThread != null ) {
-            this.connectionReadThread.interrupt();
-        }
     }
 
     public void disconnect( String reason ) {
         if ( this.connection != null && this.connection.getConnection() != null ) {
-            logger.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
+            LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
             this.connection.getConnection().disconnect( reason );
             this.connection.close();

@@ -72,6 +72,8 @@ public class PacketAddEntity extends Packet {
         }
 
         this.metadataContainer.serialize( buffer );
+
+        buffer.writeUnsignedVarInt( 0 );
     }
 
     @Override
@@ -96,6 +98,8 @@ public class PacketAddEntity extends Packet {
 
         this.metadataContainer = new MetadataContainer();
         this.metadataContainer.deserialize( buffer );
+
+        buffer.readUnsignedVarInt();
     }
 
 }
