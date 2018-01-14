@@ -440,11 +440,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
             this.connection.getConnection().disconnect( reason );
+        }
 
-            if ( this.connection != null ) {
-                this.connection.close();
-                this.connection = null;
-            }
+        if ( this.connection != null ) {
+            this.connection.close();
+            this.connection = null;
         }
 
         if ( this.tcpConnection != null ) {

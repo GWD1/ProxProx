@@ -199,7 +199,7 @@ public class EntityRewriter {
         switch ( packetId ) {
             case 0x4a:  // Boss event
                 entityId = buffer.readSignedVarInt();
-                long replacementID = getReplacementId( entityId );
+                long replacementID = getReplacementIdForServer( entityId );
 
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
