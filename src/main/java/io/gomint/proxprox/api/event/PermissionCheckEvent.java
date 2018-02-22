@@ -18,10 +18,11 @@ import lombok.Setter;
  * @version 1.0
  */
 @RequiredArgsConstructor
+@Getter
 public class PermissionCheckEvent extends Event {
 
     private final Player player;
     private final String permission;
-    @Getter @Setter private boolean result;
+    @Setter private boolean result;
 
 }
