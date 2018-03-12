@@ -7,7 +7,6 @@
 
 package io.gomint.proxprox;
 
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.gomint.jraknet.ServerSocket;
 import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
@@ -57,11 +56,8 @@ public class ProxProx implements Proxy {
      * Chat prefix for internal Command usage
      */
     public static final String PROX_PREFIX = ChatColor.GRAY + "[" + ChatColor.GREEN + "Prox" + ChatColor.DARK_GREEN + "Prox" + ChatColor.GRAY + "] ";
-    private static final Logger logger = LoggerFactory.getLogger( ProxProx.class );
+    private static final Logger LOGGER = LoggerFactory.getLogger( ProxProx.class );
     private ProxyConfig config;
-
-    // Thread pools
-    private ThreadFactory serverConnectionsThreadFactory = new ThreadFactoryBuilder().setNameFormat( "DownStream-Connection-%d" ).build();
 
     // Task scheduling
     @Getter
@@ -93,7 +89,7 @@ public class ProxProx implements Proxy {
     public ProxProx( String[] args ) {
         ProxProx.instance = this;
 
-        logger.info( "Starting ProxProx v1.0.0" );
+        LOGGER.info( "Starting ProxProx v1.0.0" );
         Security.addProvider( new org.bouncycastle.jce.provider.BouncyCastleProvider() );
 
         System.setProperty( "java.net.preferIPv4Stack", "true" );               // We currently don't use ipv6
@@ -126,7 +122,7 @@ public class ProxProx implements Proxy {
         try {
             this.config.initialize( new File( "config.cfg" ) );
         } catch ( IOException e ) {
-            logger.error( "Could not init config.cfg. Please check for corruption.", e );
+            LOGGER.error( "Could not init config.cfg. Please check for corruption.", e );
             System.exit( -1 );
         }
 
@@ -159,9 +155,9 @@ public class ProxProx implements Proxy {
 
         try {
             this.serverSocket.bind( this.config.getIp(), this.config.getPort() );
-            logger.info( "Bound to " + this.config.getIp() + ":" + this.config.getPort() );
+            LOGGER.info( "Bound to " + this.config.getIp() + ":" + this.config.getPort() );
         } catch ( SocketException e ) {
-            logger.error( "Failed to bind to " + this.config.getIp() + ":" + this.config.getPort(), e );
+            LOGGER.error( "Failed to bind to " + this.config.getIp() + ":" + this.config.getPort(), e );
             System.exit( -1 );
         }
 
@@ -183,7 +179,7 @@ public class ProxProx implements Proxy {
                             }
                         }
                     } catch ( IOException e ) {
-                        e.printStackTrace();
+                        LOGGER.warn( "Reading from console gave an exception", e );
                     }
                 }
             } ).start();
@@ -214,8 +210,8 @@ public class ProxProx implements Proxy {
                 } else {
                     lastTickTime = (float) diff / 1000000000.0F;
                 }
-            } catch ( InterruptedException e ) {
-                // Ignored ._.
+            } catch ( Exception e ) {
+                LOGGER.error( "Exception in main run", e );
             } finally {
                 tickLock.unlock();
             }
@@ -235,7 +231,7 @@ public class ProxProx implements Proxy {
                 if ( split.length == 2 ) {
                     this.config.setIp( split[1] );
                 } else {
-                    logger.error( "Malformed '--ip' command line option: Please specify actual IP value" );
+                    LOGGER.error( "Malformed '--ip' command line option: Please specify actual IP value" );
                     return false;
                 }
             } else if ( args[i].startsWith( "--port" ) ) {
@@ -249,15 +245,15 @@ public class ProxProx implements Proxy {
 
                         this.config.setPort( port );
                     } catch ( NumberFormatException e ) {
-                        logger.error( "Malformed '--port' command line option: Please specify valid integer port value" );
+                        LOGGER.error( "Malformed '--port' command line option: Please specify valid integer port value" );
                         return false;
                     }
                 } else {
-                    logger.error( "Malformed '--port' command line option: Please specify actual IP value" );
+                    LOGGER.error( "Malformed '--port' command line option: Please specify actual IP value" );
                     return false;
                 }
             } else {
-                logger.error( "Unknown command line option '{}'", args[i] );
+                LOGGER.error( "Unknown command line option '{}'", args[i] );
                 return false;
             }
         }
@@ -269,7 +265,7 @@ public class ProxProx implements Proxy {
      * Gracefully shutdown
      */
     public void shutdown() {
-        logger.info( "Shutting down..." );
+        LOGGER.info( "Shutting down..." );
 
         // Close for new connections
         this.serverSocket.close();

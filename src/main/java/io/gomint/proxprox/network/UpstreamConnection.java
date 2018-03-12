@@ -248,6 +248,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 PlayerLoginEvent event = this.proxProx.getPluginManager().callEvent( new PlayerLoginEvent( this ) );
                 if ( event.isCancelled() ) {
                     disconnect( event.getDisconnectReason() );
+
+                    // Flush the queue once to get the disconnect out
+                    this.sendQueue();
+
                     return;
                 }
 
@@ -606,15 +610,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void update( float dT ) {
-        if ( this.isWindows ) {
-            this.sendQueue();
-        }
-
         this.lastUpdatedT += dT;
         if ( this.lastUpdatedT >= Values.CLIENT_TICK_RATE ) {
-            if ( !this.isWindows ) {
-                this.sendQueue();
-            }
+            this.sendQueue();
 
             // Update downstream ping
             if ( this.proxProx.getConfig().isUseTCP() && this.currentDownStream != null ) {
