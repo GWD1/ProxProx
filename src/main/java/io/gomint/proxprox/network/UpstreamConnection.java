@@ -26,6 +26,7 @@ import io.gomint.proxprox.inventory.ItemStack;
 import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
+import io.gomint.proxprox.scheduler.SyncScheduledTask;
 import io.gomint.proxprox.util.EntityRewriter;
 import io.gomint.proxprox.util.Values;
 import lombok.EqualsAndHashCode;
@@ -43,6 +44,7 @@ import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 /**
@@ -73,7 +75,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private JSONObject skinData;
     @Getter
     private Debugger debugger;
-    private boolean isWindows = false;
 
     @Getter
     private EntityRewriter entityRewriter = new EntityRewriter();
@@ -240,7 +241,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 try {
                     skinToken.validateSignature( JwtAlgorithm.ES384, chainValidator.getClientPublicKey() );
                     this.skinData = skinToken.getClaims();
-                    this.isWindows = (Long) this.skinData.get( "DeviceOS" ) == 7;
                 } catch ( JwtSignatureException e ) {
                     e.printStackTrace();
                 }
@@ -633,7 +633,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         if ( this.disconnect != null ) {
-            this.connection.disconnect( this.disconnect );
+            // Delay closing connection so the client has enough time to react
+            ProxProx.instance.getSyncTaskManager().addTask( new SyncScheduledTask( () -> {
+                UpstreamConnection.this.connection.disconnect( UpstreamConnection.this.disconnect );
+            }, 5, -1, TimeUnit.SECONDS ) );
 
             if ( this.pendingDownStream != null ) {
                 this.pendingDownStream.disconnect( this.disconnect );
