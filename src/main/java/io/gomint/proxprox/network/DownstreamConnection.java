@@ -250,10 +250,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                             this.getSpawnYaw(), this.getSpawnPitch() );
                 }
 
-                PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
-                setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() == -1 ? 4 : this.upstreamConnection.getViewDistance() );
-                send( setChunkRadius );
-
                 break;
 
             case Protocol.REMOVE_ENTITY_PACKET:
@@ -376,6 +372,14 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 resourcePackResponse.setInfo( new HashMap<>() );
                 resourcePackResponse.setStatus( ResourceResponseStatus.COMPLETED );
                 this.send( resourcePackResponse );
+
+                // Send chunk radius
+                if ( this.upstreamConnection.getViewDistance() > 0 ) {
+                    PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
+                    setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() );
+                    send( setChunkRadius );
+                }
+
                 break;
 
             case Protocol.DISONNECT_PACKET:

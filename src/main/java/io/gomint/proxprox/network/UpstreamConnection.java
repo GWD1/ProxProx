@@ -316,17 +316,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 PacketSetChunkRadius packetSetChunkRadius = new PacketSetChunkRadius();
                 packetSetChunkRadius.deserialize( buffer );
 
-                if ( this.viewDistance != -1 ) {
-                    if ( this.currentDownStream != null ) {
-                        this.currentDownStream.send( packetSetChunkRadius );
-                    }
+                this.viewDistance = packetSetChunkRadius.getChunkRadius();
 
-                    if ( this.pendingDownStream != null ) {
-                        this.pendingDownStream.send( packetSetChunkRadius );
-                    }
+                if ( this.currentDownStream != null ) {
+                    this.currentDownStream.send( packetSetChunkRadius );
                 }
 
-                this.viewDistance = packetSetChunkRadius.getChunkRadius();
                 break;
 
             default:
