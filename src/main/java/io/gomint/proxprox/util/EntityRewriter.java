@@ -312,12 +312,13 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public long removeEntity( String from, long entityId ) {
+    public Long removeEntity( String from, long entityId ) {
         this.debugger.removeEntity( from, entityId );
 
         Long newEntity = this.rewriteIds.remove( entityId );
         if ( newEntity == null ) {
-            return entityId;
+            LOGGER.warn( "Removing an entity which wasn't known. This could lead to side effect like players not showing correctly" );
+            return null;
         }
 
         this.serverRewriteIds.remove( newEntity );

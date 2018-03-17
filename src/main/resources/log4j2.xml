@@ -11,14 +11,18 @@
         <Console name="Console" target="SYSTEM_OUT">
             <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
         </Console>
-        <File name="MyFile" fileName="all.log" immediateFlush="true" append="true">
+        <RollingRandomAccessFile name="File" fileName="logs/latest.log" filePattern="logs/%d{yyyy-MM-dd}-%i.log.gz">
             <PatternLayout pattern="%d{yyy-MM-dd HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
-        </File>
+            <Policies>
+                <TimeBasedTriggeringPolicy />
+                <OnStartupTriggeringPolicy />
+            </Policies>
+        </RollingRandomAccessFile>
     </Appenders>
     <Loggers>
         <Root level="INFO">
             <AppenderRef ref="Console" />
-            <AppenderRef ref="MyFile"/>
+            <AppenderRef ref="File"/>
         </Root>
     </Loggers>
 </Configuration>

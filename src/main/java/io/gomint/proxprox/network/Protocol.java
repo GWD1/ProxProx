@@ -67,10 +67,6 @@ public class Protocol {
     public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0e;
     public static final byte ADD_ITEM_ENTITY = (byte) 0x0f;
 
-    /**
-     * Packet ID for Chunk data
-     */
-    public static final byte CHUNK_DATA_PACKET = (byte) 0x3A;
     public static final byte PACKET_SET_DIFFICULTY = (byte) 0x3C;
     public static final byte PACKET_SET_GAMEMODE = (byte) 0x3E;
 

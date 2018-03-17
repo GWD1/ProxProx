@@ -251,7 +251,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 }
 
                 PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
-                setChunkRadius.setChunkRadius( 4 );
+                setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() == -1 ? 4 : this.upstreamConnection.getViewDistance() );
                 send( setChunkRadius );
 
                 break;
@@ -260,13 +260,15 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketRemoveEntity removeEntity = new PacketRemoveEntity();
                 removeEntity.deserialize( buffer );
 
-                long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( this.ip + ":" + this.port, removeEntity.getEntityId() );
+                Long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( this.ip + ":" + this.port, removeEntity.getEntityId() );
+                if ( entityId != null ) {
+                    removeEntity.setEntityId( entityId );
 
-                removeEntity.setEntityId( entityId );
+                    if ( this.spawnedEntities.remove( entityId ) ) {
+                        this.upstreamConnection.send( removeEntity );
+                    }
+                }
 
-                spawnedEntities.remove( entityId );
-
-                upstreamConnection.send( removeEntity );
                 break;
 
             case Protocol.ADD_ITEM_ENTITY:
@@ -346,7 +348,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 packetPlayState.deserialize( buffer );
 
                 // We have been logged in. But we miss a spawn packet
-                if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && state != ConnectionState.CONNECTED ) {
+                if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && this.state != ConnectionState.CONNECTED ) {
                     this.state = ConnectionState.CONNECTED;
                 }
 

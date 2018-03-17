@@ -88,6 +88,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
     private String disconnect = null;
+    @Getter
+    private int viewDistance = -1;
 
     private float lastUpdatedT = 0;
 
@@ -308,6 +310,23 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         break;
                 }
 
+                break;
+
+            case Protocol.PACKET_SET_CHUNK_RADIUS:
+                PacketSetChunkRadius packetSetChunkRadius = new PacketSetChunkRadius();
+                packetSetChunkRadius.deserialize( buffer );
+
+                if ( this.viewDistance != -1 ) {
+                    if ( this.currentDownStream != null ) {
+                        this.currentDownStream.send( packetSetChunkRadius );
+                    }
+
+                    if ( this.pendingDownStream != null ) {
+                        this.pendingDownStream.send( packetSetChunkRadius );
+                    }
+                }
+
+                this.viewDistance = packetSetChunkRadius.getChunkRadius();
                 break;
 
             default:
