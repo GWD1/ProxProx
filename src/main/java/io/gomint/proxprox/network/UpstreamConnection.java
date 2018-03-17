@@ -61,7 +61,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // AbstractConnection stuff
     private final Connection connection;
     private PostProcessWorker postProcessWorker;
-    private BlockingQueue<PacketBuffer> packetQueue = new LinkedBlockingQueue<>();
 
     // Downstream
     private DownstreamConnection currentDownStream;
@@ -90,8 +89,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private String disconnect = null;
     @Getter
     private int viewDistance = -1;
-
-    private float lastUpdatedT = 0;
+    private boolean disconnectNotified;
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
@@ -252,7 +250,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     disconnect( event.getDisconnectReason() );
 
                     // Flush the queue once to get the disconnect out
-                    this.sendQueue();
+                    this.update();
 
                     return;
                 }
@@ -461,7 +459,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         packet.serialize( buffer );
 
         if ( packet.mustBeInBatch() ) {
-            this.packetQueue.add( buffer );
+            this.postProcessWorker.sendPacket( buffer );
         } else {
             this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
         }
@@ -616,41 +614,21 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         packetBuffer.writeShort( (short) 0 );
         packetBuffer.writeBytes( data );
 
-        this.packetQueue.add( packetBuffer );
+        this.postProcessWorker.sendPacket( packetBuffer );
     }
 
     public boolean isConnected() {
         return this.connection.isConnected();
     }
 
-    public void update( float dT ) {
-        this.lastUpdatedT += dT;
-        if ( this.lastUpdatedT >= Values.CLIENT_TICK_RATE ) {
-            this.sendQueue();
-
-            // Update downstream ping
-            if ( this.proxProx.getConfig().isUseTCP() && this.currentDownStream != null ) {
-                UpdatePingPacket pingPacket = new UpdatePingPacket();
-                pingPacket.setPing( (int) this.connection.getPing() );
-                this.currentDownStream.getTcpConnection().send( pingPacket );
-            }
-
-            this.lastUpdatedT = 0;
-        }
-    }
-
-    private void sendQueue() {
-        if ( !this.packetQueue.isEmpty() ) {
-            List<PacketBuffer> buffers = new ArrayList<>();
-            this.packetQueue.drainTo( buffers );
-            this.postProcessWorker.sendPackets( buffers );
-        }
-
-        if ( this.disconnect != null ) {
+    public void update() {
+        if ( this.disconnect != null && !this.disconnectNotified ) {
             // Delay closing connection so the client has enough time to react
             ProxProx.instance.getSyncTaskManager().addTask( new SyncScheduledTask( () -> {
                 UpstreamConnection.this.connection.disconnect( UpstreamConnection.this.disconnect );
             }, 5, -1, TimeUnit.SECONDS ) );
+
+            this.disconnectNotified = true;
 
             if ( this.pendingDownStream != null ) {
                 this.pendingDownStream.disconnect( this.disconnect );
@@ -661,6 +639,13 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.currentDownStream.disconnect( this.disconnect );
                 this.currentDownStream = null;
             }
+        }
+
+        // Update downstream ping
+        if ( this.proxProx.getConfig().isUseTCP() && this.currentDownStream != null ) {
+            UpdatePingPacket pingPacket = new UpdatePingPacket();
+            pingPacket.setPing( (int) this.connection.getPing() );
+            this.currentDownStream.getTcpConnection().send( pingPacket );
         }
     }
 

@@ -113,7 +113,7 @@ public class ProxProx implements Proxy {
         this.executorService = new ThreadPoolExecutor( 0, 512, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), threadFactory );
 
         // We target 100 TPS
-        long skipNanos = TimeUnit.SECONDS.toNanos( 1 ) / 100;
+        long skipNanos = TimeUnit.SECONDS.toNanos( 1 ) / 20;
         this.syncTaskManager = new SyncTaskManager( this, skipNanos );
 
         // Load config first so we can override
@@ -200,7 +200,7 @@ public class ProxProx implements Proxy {
                 this.syncTaskManager.update( currentMillis, lastTickTime );
 
                 for ( Map.Entry<UUID, Player> entry : this.players.entrySet() ) {
-                    ( (UpstreamConnection) entry.getValue() ).update( lastTickTime );
+                    ( (UpstreamConnection) entry.getValue() ).update();
                 }
 
                 long diff = System.nanoTime() - start;
