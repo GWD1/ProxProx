@@ -1,7 +1,6 @@
 package io.gomint.proxprox.util;
 
 import io.gomint.jraknet.PacketBuffer;
-import io.gomint.proxprox.debug.Debugger;
 import io.gomint.proxprox.network.protocol.PacketInventoryTransaction;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +8,7 @@ import lombok.Setter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,28 +22,27 @@ public class EntityRewriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger( EntityRewriter.class );
 
-    @Setter private Debugger debugger;
-    @Getter @Setter private long ownId;
-    @Getter @Setter private long currentDownStreamId;
+    @Getter @Setter
+    private long ownId;
+    @Getter @Setter
+    private long currentDownStreamId;
     private AtomicLong idCounter = new AtomicLong( 0 );
 
-    private Map<Long, Long> rewriteIds = new ConcurrentHashMap<>();
-    private Map<Long, Long> serverRewriteIds = new ConcurrentHashMap<>();
+    private Map<Long, Long> rewriteIds = new HashMap<>();
+    private Map<Long, Long> serverRewriteIds = new HashMap<>();
 
-    public long addEntity( String from, long entityID ) {
+    public long addEntity( long entityID ) {
         long newEntityId = this.idCounter.incrementAndGet();
         if ( newEntityId == this.ownId ) {
             newEntityId = this.idCounter.incrementAndGet();
         }
-
-        this.debugger.addEntity( from, entityID, newEntityId );
 
         this.serverRewriteIds.put( newEntityId, entityID );
         this.rewriteIds.put( entityID, newEntityId );
         return newEntityId;
     }
 
-    public PacketBuffer rewriteServerToClient( String from, byte packetId, int pos, PacketBuffer buffer ) {
+    public PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer ) {
         // Entity ID rewrites
         long entityId;
         switch ( packetId ) {
@@ -55,13 +54,10 @@ public class EntityRewriter {
                     byte[] data = new byte[buffer.getRemaining()];
                     buffer.readBytes( data );
 
-                    buffer = new PacketBuffer( 8 );
+                    buffer = new PacketBuffer( data.length );
                     buffer.writeSignedVarLong( replacementID );
                     buffer.writeBytes( data );
                     buffer.resetPosition();
-
-
-                    this.debugger.addEntityRewrite( from, "UpStream", packetId, entityId, replacementID );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -88,9 +84,6 @@ public class EntityRewriter {
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
                     buffer.resetPosition();
-
-
-                    this.debugger.addEntityRewrite( from, "UpStream", packetId, entityId, replacementID );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -112,8 +105,6 @@ public class EntityRewriter {
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
                     buffer.resetPosition();
-
-                    this.debugger.addEntityRewrite( from, "UpStream", packetId, entityId, replacementID );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -130,9 +121,6 @@ public class EntityRewriter {
                 buffer.writeUnsignedVarLong( replaceItemId );
                 buffer.writeUnsignedVarLong( replacePlayerId );
                 buffer.resetPosition();
-
-                this.debugger.addEntityRewrite( from, "UpStream", packetId, itemId, replaceItemId );
-                this.debugger.addEntityRewrite( from, "UpStream", packetId, playerId, replacePlayerId );
 
                 break;
 
@@ -167,7 +155,7 @@ public class EntityRewriter {
 
         Long rewrite = this.rewriteIds.get( entityId );
         if ( rewrite == null ) {
-            LOGGER.warn( "Got entity packet for entity not spawned yet: " + entityId );
+            LOGGER.warn( "Got entity packet for entity not spawned yet: {}", entityId );
             return entityId;
         }
 
@@ -181,19 +169,13 @@ public class EntityRewriter {
 
         Long rewriteId = this.serverRewriteIds.get( entityId );
         if ( rewriteId == null ) {
-            LOGGER.error( "Did not find replacement id for " + entityId );
-
-            for ( Map.Entry<Long, Long> longLongEntry : this.serverRewriteIds.entrySet() ) {
-                LOGGER.info( "Found " + longLongEntry.getKey() + " -> " + longLongEntry.getValue() );
-            }
-
             return entityId;
         }
 
         return rewriteId;
     }
 
-    public PacketBuffer rewriteClientToServer( String to, byte packetId, int pos, PacketBuffer buffer ) {
+    public PacketBuffer rewriteClientToServer( byte packetId, int pos, PacketBuffer buffer ) {
         long entityId;
 
         switch ( packetId ) {
@@ -205,13 +187,10 @@ public class EntityRewriter {
                     byte[] data = new byte[buffer.getRemaining()];
                     buffer.readBytes( data );
 
-                    buffer = new PacketBuffer( 8 );
+                    buffer = new PacketBuffer( data.length );
                     buffer.writeSignedVarLong( replacementID );
                     buffer.writeBytes( data );
                     buffer.resetPosition();
-
-
-                    this.debugger.addEntityRewrite( "UpStream", to, packetId, entityId, replacementID );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -231,12 +210,10 @@ public class EntityRewriter {
                     byte[] data = new byte[buffer.getRemaining()];
                     buffer.readBytes( data );
 
-                    buffer = new PacketBuffer( 8 );
+                    buffer = new PacketBuffer( data.length );
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
                     buffer.resetPosition();
-
-                    this.debugger.addEntityRewrite( "UpStream", to, packetId, entityId, replacementID );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -253,8 +230,6 @@ public class EntityRewriter {
                     buffer.writeSignedVarInt( actionId );
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.resetPosition();
-
-                    this.debugger.addEntityRewrite( "UpStream", to, packetId, entityId, replacementID );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -278,8 +253,6 @@ public class EntityRewriter {
                         buffer.writeUnsignedVarLong( replacementID );
                         buffer.writeBytes( data );
                         buffer.resetPosition();
-
-                        this.debugger.addEntityRewrite( "UpStream", to, packetId, entityId, replacementID );
                     } else {
                         buffer.setPosition( pos );
                     }
@@ -300,8 +273,6 @@ public class EntityRewriter {
                     buffer = new PacketBuffer( 8 );
                     inventoryTransaction.serialize( buffer );
                     buffer.resetPosition();
-
-                    this.debugger.addEntityRewrite( "UpStream", to, packetId, entityId, inventoryTransaction.getEntityId() );
                 } else {
                     buffer.setPosition( pos );
                 }
@@ -312,9 +283,7 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public Long removeEntity( String from, long entityId ) {
-        this.debugger.removeEntity( from, entityId );
-
+    public Long removeEntity( long entityId ) {
         Long newEntity = this.rewriteIds.remove( entityId );
         if ( newEntity == null ) {
             LOGGER.warn( "Removing an entity which wasn't known. This could lead to side effect like players not showing correctly" );
@@ -326,8 +295,6 @@ public class EntityRewriter {
     }
 
     public void removeServerEntity( long entityId ) {
-        this.debugger.removeEntity( "UpStream", entityId );
-
         Long oldId = this.serverRewriteIds.remove( entityId );
         if ( oldId != null ) {
             this.rewriteIds.remove( oldId );

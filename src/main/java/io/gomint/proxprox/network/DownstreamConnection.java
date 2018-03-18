@@ -232,7 +232,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 if ( this.upstreamConnection.isFirstServer() ) {
                     this.upstreamConnection.getEntityRewriter().setOwnId( startGame.getRuntimeEntityId() );
-                    this.upstreamConnection.getEntityRewriter().setDebugger( this.upstreamConnection.getDebugger() );
                 }
 
                 this.upstreamConnection.getEntityRewriter().setCurrentDownStreamId( startGame.getRuntimeEntityId() );
@@ -248,6 +247,13 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 } else {
                     this.upstreamConnection.move( this.getSpawnX(), this.getSpawnY(), this.getSpawnZ(),
                             this.getSpawnYaw(), this.getSpawnPitch() );
+
+                    // Send chunk radius
+                    if ( this.upstreamConnection.getViewDistance() > 0 ) {
+                        PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
+                        setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() );
+                        send( setChunkRadius );
+                    }
                 }
 
                 break;
@@ -256,7 +262,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketRemoveEntity removeEntity = new PacketRemoveEntity();
                 removeEntity.deserialize( buffer );
 
-                Long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( this.ip + ":" + this.port, removeEntity.getEntityId() );
+                Long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId() );
                 if ( entityId != null ) {
                     removeEntity.setEntityId( entityId );
 
@@ -271,7 +277,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddItem packetAddItem = new PacketAddItem();
                 packetAddItem.deserialize( buffer );
 
-                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( this.ip + ":" + this.port, packetAddItem.getEntityId() );
+                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId() );
                 packetAddItem.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -282,9 +288,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddEntity packetAddEntity = new PacketAddEntity();
                 packetAddEntity.deserialize( buffer );
 
-                addedId = this.upstreamConnection.getEntityRewriter().addEntity( this.ip + ":" + this.port, packetAddEntity.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId() );
                 packetAddEntity.setEntityId( addedId );
-                spawnedEntities.add( addedId );
+
+                this.spawnedEntities.add( addedId );
 
                 // Rewrite metadata if needed
                 if ( packetAddEntity.getMetadataContainer().has( 5 ) ) {
@@ -304,7 +311,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddPlayer packetAddPlayer = new PacketAddPlayer();
                 packetAddPlayer.deserialize( buffer );
 
-                addedId = this.upstreamConnection.getEntityRewriter().addEntity( this.ip + ":" + this.port, packetAddPlayer.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
                 packetAddPlayer.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -354,9 +361,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
                     }
 
-                    // Send chunk radius
-
-
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
                 }
@@ -372,13 +376,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 resourcePackResponse.setInfo( new HashMap<>() );
                 resourcePackResponse.setStatus( ResourceResponseStatus.COMPLETED );
                 this.send( resourcePackResponse );
-
-                // Send chunk radius
-                if ( this.upstreamConnection.getViewDistance() > 0 ) {
-                    PacketSetChunkRadius setChunkRadius = new PacketSetChunkRadius();
-                    setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() );
-                    send( setChunkRadius );
-                }
 
                 break;
 
@@ -409,7 +406,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 break;
 
             default:
-                buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( this.ip + ":" + this.port, packetId, pos, buffer );
+                buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer );
                 this.upstreamConnection.send( packetId, buffer );
                 break;
         }
@@ -494,8 +491,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         buffer.writeShort( (short) 0 );
         packet.serialize( buffer );
 
-        this.upstreamConnection.getDebugger().addPacket( "DownStream", this.ip + ":" + this.port, packet.getId(), buffer );
-
         // Do we send via TCP or UDP?
         if ( this.tcpConnection != null ) {
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
@@ -511,8 +506,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     }
 
     public void send( byte packetId, PacketBuffer buffer ) {
-        this.upstreamConnection.getDebugger().addPacket( "DownStream", this.ip + ":" + this.port, packetId, buffer );
-
         if ( this.tcpConnection != null ) {
             PacketBuffer newBuffer = new PacketBuffer( 64 );
             newBuffer.writeByte( packetId );

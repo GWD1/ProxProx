@@ -142,7 +142,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             buffer.readShort();
         }
 
-        // this.debugger.addPacket( "Client", "UpStream", packetId, buffer );
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
@@ -320,11 +319,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     this.currentDownStream.send( packetSetChunkRadius );
                 }
 
+                if ( this.firstServer && this.pendingDownStream != null ) {
+                    this.pendingDownStream.send( packetSetChunkRadius );
+                }
+
                 break;
 
             default:
                 if ( this.currentDownStream != null ) {
-                    buffer = this.entityRewriter.rewriteClientToServer( this.currentDownStream.getIP() + ":" + this.currentDownStream.getPort(), packetId, pos, buffer );
+                    buffer = this.entityRewriter.rewriteClientToServer( packetId, pos, buffer );
                     this.currentDownStream.send( packetId, buffer );
                 }
 
@@ -604,12 +607,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void send( byte packetId, PacketBuffer buffer ) {
-        this.debugger.addPacket( "UpStream", "Client", packetId, buffer );
-
         byte[] data = new byte[buffer.getRemaining()];
         buffer.readBytes( data );
 
-        PacketBuffer packetBuffer = new PacketBuffer( 64 );
+        PacketBuffer packetBuffer = new PacketBuffer( data.length + 3 );
         packetBuffer.writeByte( packetId );
         packetBuffer.writeShort( (short) 0 );
         packetBuffer.writeBytes( data );

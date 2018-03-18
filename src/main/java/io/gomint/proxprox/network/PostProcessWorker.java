@@ -97,7 +97,7 @@ public class PostProcessWorker {
 
         private BatchStreamHolder() {
             this.bout = new ByteArrayOutputStream();
-            this.deflater = new Deflater();
+            this.deflater = new Deflater( 3 );
         }
 
         private void reset() {
