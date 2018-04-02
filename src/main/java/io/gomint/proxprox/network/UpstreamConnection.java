@@ -31,6 +31,7 @@ import io.gomint.proxprox.util.EntityRewriter;
 import io.gomint.proxprox.util.Values;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.ParseException;
@@ -81,7 +82,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
-    @Getter private boolean firstServer = true;
+    @Getter @Setter private boolean firstServer = true;
 
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
@@ -598,7 +599,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Send logged in Event on first downstream connect
         if ( this.firstServer ) {
             this.proxProx.getPluginManager().callEvent( new PlayerLoggedinEvent( this ) );
-            this.firstServer = false;
         } else {
             PacketMobEquipment packetMobEquipment = new PacketMobEquipment();
             packetMobEquipment.setEntityId( this.entityRewriter.getOwnId() );

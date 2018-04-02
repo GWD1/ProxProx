@@ -7,7 +7,14 @@
 
 package io.gomint.proxprox.network;
 
-import io.gomint.jraknet.*;
+import io.gomint.jraknet.ClientSocket;
+import io.gomint.jraknet.Connection;
+import io.gomint.jraknet.EncapsulatedPacket;
+import io.gomint.jraknet.PacketBuffer;
+import io.gomint.jraknet.PacketReliability;
+import io.gomint.jraknet.Socket;
+import io.gomint.jraknet.SocketEvent;
+import io.gomint.jraknet.SocketEventHandler;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
@@ -16,7 +23,19 @@ import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.api.network.PacketSender;
 import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
-import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.network.protocol.PacketAddEntity;
+import io.gomint.proxprox.network.protocol.PacketAddItem;
+import io.gomint.proxprox.network.protocol.PacketAddPlayer;
+import io.gomint.proxprox.network.protocol.PacketBatch;
+import io.gomint.proxprox.network.protocol.PacketDisconnect;
+import io.gomint.proxprox.network.protocol.PacketEncryptionReady;
+import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
+import io.gomint.proxprox.network.protocol.PacketPlayState;
+import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
+import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
+import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
+import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
+import io.gomint.proxprox.network.protocol.PacketStartGame;
 import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
@@ -28,7 +47,11 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
 import java.security.Key;
-import java.util.*;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -353,16 +376,15 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 // We have been logged in. But we miss a spawn packet
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && this.state != ConnectionState.CONNECTED ) {
                     this.state = ConnectionState.CONNECTED;
-                }
-
-                // The first spawn state must come through
-                if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN ) {
-                    if ( this.upstreamConnection.isFirstServer() ) {
-                        this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
-                    }
 
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
+                }
+
+                // The first spawn state must come through
+                if ( packetPlayState.getState() == PacketPlayState.PlayState.SPAWN && this.upstreamConnection.isFirstServer() ) {
+                    this.upstreamConnection.sendPlayState( PacketPlayState.PlayState.SPAWN );
+                    this.upstreamConnection.setFirstServer( false );
                 }
 
                 break;

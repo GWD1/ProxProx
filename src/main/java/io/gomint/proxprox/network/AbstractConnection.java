@@ -49,7 +49,7 @@ public abstract class AbstractConnection {
      * @param orderingChannel The ordering channel of this batched packet
      * @param batch           This boolean indicated if the buffer is coming out of a batched packet or not
      */
-    protected void handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
+    void handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
         if ( batch ) {
             logger.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
             return;
@@ -94,8 +94,7 @@ public abstract class AbstractConnection {
             this.handlePacket( pktBuf, reliability, orderingChannel, true );
 
             if ( pktBuf.getRemaining() > 0 ) {
-                logger.error( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x" +
-                        Integer.toHexString( payData[0] ) + " remaining " + pktBuf.getRemaining() + " bytes" );
+                logger.error( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x{} remaining {} bytes", Integer.toHexString( payData[0] ), pktBuf.getRemaining() );
                 return;
             }
         }
