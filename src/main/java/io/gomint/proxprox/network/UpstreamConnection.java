@@ -61,6 +61,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     // AbstractConnection stuff
     private final Connection connection;
     private PostProcessWorker postProcessWorker;
+    private BlockingQueue<PacketBuffer> packetQueue = new LinkedBlockingQueue<>();
 
     // Downstream
     private DownstreamConnection currentDownStream;
@@ -75,14 +76,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Getter
     private Debugger debugger;
 
-    @Getter
-    private EntityRewriter entityRewriter = new EntityRewriter();
+    @Getter private EntityRewriter entityRewriter = new EntityRewriter();
     private int protocolVersion;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
-    @Getter
-    private boolean firstServer = true;
+    @Getter private boolean firstServer = true;
 
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
@@ -141,6 +140,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         if ( packetId != Protocol.PACKET_BATCH ) {
             buffer.readShort();
         }
+
+        LOGGER.debug( "Got packet {}", Integer.toHexString( packetId & 0xFF ) );
 
         int pos = buffer.getPosition();
 
@@ -261,11 +262,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.proxProx.addPlayer( this );
 
                 // We need to start encryption first
+                this.proxProx.getWatchdog().add( 500, TimeUnit.MILLISECONDS );
+
                 this.encryptionHandler = new EncryptionHandler();
                 this.encryptionHandler.supplyClientKey( chainValidator.getClientPublicKey() );
                 if ( this.encryptionHandler.beginClientsideEncryption() ) {
                     // Forge a JWT
                     String encryptionRequestJWT = FORGER.forge( encryptionHandler.getServerPublic(), encryptionHandler.getServerPrivate(), encryptionHandler.getClientSalt() );
+                    LOGGER.debug( "Crafted JWT for client: {}", encryptionRequestJWT );
 
                     PacketEncryptionRequest packetEncryptionRequest = new PacketEncryptionRequest();
                     packetEncryptionRequest.setJwt( encryptionRequestJWT );
@@ -273,6 +277,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 } else {
                     disconnect( "Error in creating AES token" );
                 }
+
+                this.proxProx.getWatchdog().done();
 
                 break;
 
@@ -302,6 +308,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         resourcePackStack.setResourcePackEntries( new ArrayList<>() );
                         send( resourcePackStack );
                         break;
+                    case REFUSED:
                     case COMPLETED:
                         this.connect( this.proxProx.getConfig().getDefaultServer().getIp(), this.proxProx.getConfig().getDefaultServer().getPort() );
                         break;
@@ -347,7 +354,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             this.pendingDownStream = null;
         }
 
-        this.debugger.addCustomLine( "[CONN] New connection to " + switchEvent.getTo().getIP() + ":" + switchEvent.getTo().getPort() );
+        LOGGER.debug( "New connection to " + switchEvent.getTo().getIP() + ":" + switchEvent.getTo().getPort() );
         this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
     }
 
@@ -461,8 +468,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         buffer.writeShort( (short) 0 );
         packet.serialize( buffer );
 
+        LOGGER.debug( "Sending packet {}", Integer.toHexString( packet.getId() & 0xFF ) );
+
         if ( packet.mustBeInBatch() ) {
-            this.postProcessWorker.sendPacket( buffer );
+            this.packetQueue.offer( buffer );
         } else {
             this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
         }
@@ -615,7 +624,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         packetBuffer.writeShort( (short) 0 );
         packetBuffer.writeBytes( data );
 
-        this.postProcessWorker.sendPacket( packetBuffer );
+        this.packetQueue.offer( packetBuffer );
     }
 
     public boolean isConnected() {
@@ -623,6 +632,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void update() {
+        // Send packets
+        if ( !this.packetQueue.isEmpty() ) {
+            List<PacketBuffer> drain = new ArrayList<>();
+            this.packetQueue.drainTo( drain );
+            this.postProcessWorker.sendPackets( drain );
+        }
+
+        // Disconnect if needed
         if ( this.disconnect != null && !this.disconnectNotified ) {
             // Delay closing connection so the client has enough time to react
             ProxProx.instance.getSyncTaskManager().addTask( new SyncScheduledTask( () -> {

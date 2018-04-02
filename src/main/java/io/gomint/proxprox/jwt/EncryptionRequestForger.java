@@ -1,6 +1,8 @@
 package io.gomint.proxprox.jwt;
 
 import org.json.simple.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -11,6 +13,8 @@ import java.util.Base64;
  * @version 1.0
  */
 public class EncryptionRequestForger {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger( EncryptionRequestForger.class );
 
     /**
      * Forge a new Encryption start JWT token
@@ -45,7 +49,7 @@ public class EncryptionRequestForger {
         try {
             signatureDigest = algorithm.getSignature().sign( serverPrivate, signatureBytes );
         } catch ( JwtSignatureException e ) {
-            e.printStackTrace();
+            LOGGER.warn( "Could not sign encryption request", e );
             return null;
         }
 

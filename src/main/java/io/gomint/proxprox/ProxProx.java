@@ -19,6 +19,7 @@ import io.gomint.proxprox.network.SocketEventListener;
 import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
 import io.gomint.proxprox.scheduler.SyncTaskManager;
+import io.gomint.proxprox.util.Watchdog;
 import io.netty.util.ResourceLeakDetector;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -80,6 +81,10 @@ public class ProxProx implements Proxy {
     // Player maps
     private Map<UUID, Player> players = new ConcurrentHashMap<>();
 
+    // Stuff for utils
+    @Getter
+    private Watchdog watchdog;
+
     /**
      * Entrypoint to ProxProx. This should be only called from the Bootstrap so we can
      * be sure we have all Libs loaded which we need.
@@ -111,6 +116,9 @@ public class ProxProx implements Proxy {
         };
 
         this.executorService = new ThreadPoolExecutor( 0, 512, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), threadFactory );
+
+        // Build up watchdog
+        this.watchdog = new Watchdog( this.executorService, this.running );
 
         // We target 100 TPS
         long skipNanos = TimeUnit.SECONDS.toNanos( 1 ) / 20;
@@ -147,7 +155,7 @@ public class ProxProx implements Proxy {
         this.pluginManager.registerCommand( null, new Commandplugins( this.pluginManager ) );
 
         // Bind upstream UDP Raknet
-        this.serverSocket = new ServerSocket( 10000 );
+        this.serverSocket = new ServerSocket( LoggerFactory.getLogger( "jRaknet" ), 10000 );
         this.serverSocket.setMojangModificationEnabled( true );
 
         this.socketEventListener = new SocketEventListener( this );
