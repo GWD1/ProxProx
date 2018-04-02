@@ -12,6 +12,7 @@ import lombok.Setter;
 import org.bouncycastle.crypto.BufferedBlockCipher;
 import org.bouncycastle.crypto.InvalidCipherTextException;
 import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.engines.AESEngine;
 import org.bouncycastle.crypto.engines.AESFastEngine;
 import org.bouncycastle.crypto.modes.CFBBlockCipher;
 import org.bouncycastle.crypto.params.KeyParameter;
@@ -366,7 +367,7 @@ public class EncryptionHandler {
     }
 
     private BufferedBlockCipher createCipher( boolean encryptor, byte[] key, byte[] iv ) {
-        BufferedBlockCipher cipher = new BufferedBlockCipher( new CFBBlockCipher( new AESFastEngine(), 8 ) );
+        BufferedBlockCipher cipher = new BufferedBlockCipher( new CFBBlockCipher( new AESEngine(), 8 ) );
         cipher.init( encryptor, new ParametersWithIV( new KeyParameter( key ), iv ) );
         return cipher;
     }

@@ -33,14 +33,14 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.54</version>
+            <version>1.59</version>
         </dependency>
 
         <!-- Networking -->
         <dependency>
             <groupId>io.gomint</groupId>
             <artifactId>jraknet</artifactId>
-            <version>5.0.7-SNAPSHOT</version>
+            <version>5.0.8-SNAPSHOT</version>
         </dependency>
 
         <!-- Logging -->
@@ -73,7 +73,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>19.0</version>
+            <version>24.0-jre</version>
         </dependency>
 
         <!-- JSON Simple -->
