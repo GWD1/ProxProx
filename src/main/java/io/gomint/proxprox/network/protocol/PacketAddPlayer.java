@@ -25,6 +25,9 @@ public class PacketAddPlayer extends Packet {
     private UUID uuid;
     private String name;
 
+    private String thirdPartyName;
+    private int platformID;
+
     private long entityId;
 
     private byte[] data;
@@ -40,6 +43,10 @@ public class PacketAddPlayer extends Packet {
     public void serialize( PacketBuffer buffer ) {
         buffer.writeUUID( this.uuid );
         buffer.writeString( this.name );
+
+        buffer.writeString( this.thirdPartyName );
+        buffer.writeSignedVarInt( this.platformID );
+
         buffer.writeSignedVarLong( this.entityId );
         buffer.writeUnsignedVarLong( this.entityId );
 
@@ -51,6 +58,10 @@ public class PacketAddPlayer extends Packet {
         // I only care for the entity id long
         this.uuid = buffer.readUUID();
         this.name = buffer.readString();
+
+        this.thirdPartyName = buffer.readString();
+        this.platformID = buffer.readSignedVarInt();
+
         this.entityId = buffer.readSignedVarLong().longValue();
         buffer.readUnsignedVarLong();
 
