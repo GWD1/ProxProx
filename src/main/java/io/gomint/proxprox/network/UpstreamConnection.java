@@ -414,8 +414,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.entityRewriter.removeServerEntity( eID );
             }
 
-            move( 0, 4000, 0, 0, 0 );
-
             this.currentDownStream = null;
         }
 
