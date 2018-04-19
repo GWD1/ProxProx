@@ -631,7 +631,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     public void update() {
         // Send packets
-        if ( !this.proxProx.getConfig().isUseTCP() ) {
+        if ( !this.proxProx.getConfig().isUseTCP() || this.currentDownStream == null ) {
             if ( !this.packetQueue.isEmpty() ) {
                 List<PacketBuffer> drain = new ArrayList<>();
                 this.packetQueue.drainTo( drain );

@@ -1,5 +1,6 @@
 package io.gomint.proxprox.network.tcp;
 
+import io.gomint.proxprox.network.tcp.protocol.FlushTickPacket;
 import io.gomint.proxprox.network.tcp.protocol.SendPlayerToServerPacket;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
@@ -36,6 +37,9 @@ public class Decoder extends ByteToMessageDecoder {
                 sendPlayerToServerPacket.read( buf );
                 objects.add( sendPlayerToServerPacket );
                 break;
+            case 4:
+                FlushTickPacket flushTickPacket = new FlushTickPacket();
+                objects.add( flushTickPacket );
             default:
                 break;
         }

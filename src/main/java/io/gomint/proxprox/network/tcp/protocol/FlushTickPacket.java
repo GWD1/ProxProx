@@ -9,7 +9,7 @@ import io.netty.buffer.ByteBuf;
 public class FlushTickPacket extends Packet {
 
     public FlushTickPacket() {
-        super( (byte) 0x03 );
+        super( (byte) 0x04 );
     }
 
     @Override
