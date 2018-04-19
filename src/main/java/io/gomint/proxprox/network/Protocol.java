@@ -67,6 +67,8 @@ public class Protocol {
     public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0e;
     public static final byte ADD_ITEM_ENTITY = (byte) 0x0f;
 
+    public static final byte PACKET_ENTITY_METADATA = (byte) 0x27;
+
     public static final byte PACKET_SET_DIFFICULTY = (byte) 0x3C;
     public static final byte PACKET_SET_GAMEMODE = (byte) 0x3E;
 

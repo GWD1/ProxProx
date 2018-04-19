@@ -39,4 +39,9 @@ public class PacketBatch extends Packet {
 		buffer.readBytes( this.payload );
 	}
 
+	@Override
+	public boolean mustBeInBatch() {
+		return false;
+	}
+
 }

@@ -9,18 +9,18 @@ package io.gomint.proxprox.network;
 
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
-import io.gomint.jraknet.datastructures.TriadRange;
+import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.protocol.PacketBatch;
+import lombok.Getter;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.zip.Deflater;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.zip.InflaterInputStream;
 
 /**
@@ -31,7 +31,9 @@ public abstract class AbstractConnection {
 
     private static final Logger logger = LoggerFactory.getLogger( AbstractConnection.class );
 
+    @Getter
     protected ConnectionState state = ConnectionState.HANDSHAKE;
+    @Getter
     protected EncryptionHandler encryptionHandler = null;
 
     /**
@@ -128,9 +130,12 @@ public abstract class AbstractConnection {
         }
     }
 
+    public abstract void send( Packet packet );
+
     protected enum ConnectionState {
         HANDSHAKE,
-        CONNECTED
+        CONNECTED,
+        ENCRYPTED
     }
 
 }

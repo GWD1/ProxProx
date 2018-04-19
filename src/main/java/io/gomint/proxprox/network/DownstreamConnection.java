@@ -7,14 +7,7 @@
 
 package io.gomint.proxprox.network;
 
-import io.gomint.jraknet.ClientSocket;
-import io.gomint.jraknet.Connection;
-import io.gomint.jraknet.EncapsulatedPacket;
-import io.gomint.jraknet.PacketBuffer;
-import io.gomint.jraknet.PacketReliability;
-import io.gomint.jraknet.Socket;
-import io.gomint.jraknet.SocketEvent;
-import io.gomint.jraknet.SocketEventHandler;
+import io.gomint.jraknet.*;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
@@ -23,19 +16,7 @@ import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.api.network.PacketSender;
 import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
-import io.gomint.proxprox.network.protocol.PacketAddEntity;
-import io.gomint.proxprox.network.protocol.PacketAddItem;
-import io.gomint.proxprox.network.protocol.PacketAddPlayer;
-import io.gomint.proxprox.network.protocol.PacketBatch;
-import io.gomint.proxprox.network.protocol.PacketDisconnect;
-import io.gomint.proxprox.network.protocol.PacketEncryptionReady;
-import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
-import io.gomint.proxprox.network.protocol.PacketPlayState;
-import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
-import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
-import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
-import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
-import io.gomint.proxprox.network.protocol.PacketStartGame;
+import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
@@ -47,11 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
 import java.security.Key;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -70,7 +47,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     // Client connection
     private ClientSocket connection;
-    private PostProcessWorker postProcessWorker;
     @Getter
     private ConnectionHandler tcpConnection;
     private boolean manualClose;
@@ -210,7 +186,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     protected void setup() {
         super.setup();
 
-        this.postProcessWorker = new PostProcessWorker( this.getConnection() );
         this.connection.getConnection().addDataProcessor( new Function<EncapsulatedPacket, EncapsulatedPacket>() {
             @Override
             public EncapsulatedPacket apply( EncapsulatedPacket data ) {
@@ -292,7 +267,30 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     if ( this.spawnedEntities.remove( entityId ) ) {
                         this.upstreamConnection.send( removeEntity );
                     }
+                } else {
+                    LOGGER.warn( "Could not remove entity with id {}", removeEntity.getEntityId() );
                 }
+
+                break;
+
+            case Protocol.PACKET_ENTITY_METADATA:
+                PacketEntityMetadata metadata = new PacketEntityMetadata();
+                metadata.deserialize( buffer );
+
+                metadata.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getEntityId() ) );
+
+                // Rewrite metadata if needed
+                if ( metadata.getMetadata().has( 5 ) ) {
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getMetadata().getLong( 5 ) );
+                    metadata.getMetadata().putLong( 5, replacementId );
+                }
+
+                if ( metadata.getMetadata().has( 6 ) ) {
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getMetadata().getLong( 6 ) );
+                    metadata.getMetadata().putLong( 6, replacementId );
+                }
+
+                this.upstreamConnection.send( metadata );
 
                 break;
 
@@ -327,7 +325,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     packetAddEntity.getMetadataContainer().putLong( 6, replacementId );
                 }
 
-                upstreamConnection.send( packetAddEntity );
+                this.upstreamConnection.send( packetAddEntity );
                 break;
 
             case Protocol.ADD_PLAYER_PACKET:
@@ -336,9 +334,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
                 packetAddPlayer.setEntityId( addedId );
-                spawnedEntities.add( addedId );
+                this.spawnedEntities.add( addedId );
+                this.upstreamConnection.send( packetAddPlayer );
 
-                upstreamConnection.send( packetAddPlayer );
+                LOGGER.info( "Got new player: {} / ID: {}", packetAddPlayer.getName(), packetAddPlayer.getEntityId() );
+
                 break;
 
             case Protocol.PACKET_ENCRYPTION_REQUEST:
@@ -361,7 +361,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.encryptionHandler = new EncryptionHandler();
                 this.encryptionHandler.setServerPublicKey( keyDataBase64 );
                 this.encryptionHandler.beginServersideEncryption( Base64.getDecoder().decode( (String) token.getClaim( "salt" ) ) );
-                this.postProcessWorker.setEncryptionHandler( this.encryptionHandler );
+                this.state = ConnectionState.ENCRYPTED;
 
                 // Tell the server that we are ready to receive encrypted packets from now on:
                 PacketEncryptionReady response = new PacketEncryptionReady();
@@ -374,9 +374,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 packetPlayState.deserialize( buffer );
 
                 // We have been logged in. But we miss a spawn packet
-                if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS && this.state != ConnectionState.CONNECTED ) {
-                    this.state = ConnectionState.CONNECTED;
-
+                if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS ) {
                     this.upstreamConnection.switchToDownstream( this );
                     this.proxProx.getPluginManager().callEvent( new PlayerSwitchedEvent( this.upstreamConnection, this ) );
                 }
@@ -520,7 +518,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
-                this.postProcessWorker.sendPacket( buffer );
+                this.proxProx.getExecutorService().execute( new PostProcessWorker( this, new PacketBuffer[]{ buffer } ) );
             } else {
                 this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
             }
@@ -549,7 +547,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             packetBuffer.writeByte( packetId );
             packetBuffer.writeShort( (short) 0 );
             packetBuffer.writeBytes( data );
-            this.postProcessWorker.sendPacket( packetBuffer );
+
+            this.proxProx.getExecutorService().execute( new PostProcessWorker( this, new PacketBuffer[]{ packetBuffer } ) );
         }
     }
 

@@ -28,7 +28,6 @@ import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
 import io.gomint.proxprox.util.EntityRewriter;
-import io.gomint.proxprox.util.Values;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,7 +40,10 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -61,7 +63,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     // AbstractConnection stuff
     private final Connection connection;
-    private PostProcessWorker postProcessWorker;
     private BlockingQueue<PacketBuffer> packetQueue = new LinkedBlockingQueue<>();
 
     // Downstream
@@ -77,12 +78,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Getter
     private Debugger debugger;
 
-    @Getter private EntityRewriter entityRewriter = new EntityRewriter();
+    @Getter
+    private EntityRewriter entityRewriter = new EntityRewriter();
     private int protocolVersion;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
-    @Getter @Setter private boolean firstServer = true;
+    @Getter
+    @Setter
+    private boolean firstServer = true;
 
     // Metadata
     private Map<String, Object> metaData = new ConcurrentHashMap<>();
@@ -111,7 +115,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         super.setup();
 
         // Create thread for reading data
-        this.postProcessWorker = new PostProcessWorker( connection );
         this.connection.addDataProcessor( new Function<EncapsulatedPacket, EncapsulatedPacket>() {
             @Override
             public EncapsulatedPacket apply( EncapsulatedPacket data ) {
@@ -191,7 +194,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 }
 
                 Object jsonChainRaw = json.get( "chain" );
-                if ( jsonChainRaw == null || !( jsonChainRaw instanceof JSONArray ) ) {
+                if ( !( jsonChainRaw instanceof JSONArray ) ) {
                     return;
                 }
 
@@ -284,8 +287,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 break;
 
             case Protocol.PACKET_ENCRYPTION_READY:
-                this.postProcessWorker.setEncryptionHandler( this.encryptionHandler );
-
+                this.state = ConnectionState.ENCRYPTED;
                 send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
 
                 // Send resource pack stuff
@@ -464,14 +466,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     public void send( Packet packet ) {
         PacketBuffer buffer = new PacketBuffer( 4 );
         buffer.writeByte( packet.getId() );
-        buffer.writeShort( (short) 0 );
-        packet.serialize( buffer );
 
         LOGGER.debug( "Sending packet {}", Integer.toHexString( packet.getId() & 0xFF ) );
 
         if ( packet.mustBeInBatch() ) {
+            buffer.writeShort( (short) 0 );
+            packet.serialize( buffer );
             this.packetQueue.offer( buffer );
         } else {
+            packet.serialize( buffer );
             this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
         }
     }
@@ -633,9 +636,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Send packets
         if ( !this.proxProx.getConfig().isUseTCP() || this.currentDownStream == null ) {
             if ( !this.packetQueue.isEmpty() ) {
-                List<PacketBuffer> drain = new ArrayList<>();
-                this.packetQueue.drainTo( drain );
-                this.postProcessWorker.sendPackets( drain );
+                PacketBuffer[] packets = new PacketBuffer[this.packetQueue.size()];
+                this.packetQueue.toArray( packets );
+                this.proxProx.getExecutorService().execute( new PostProcessWorker( this, packets ) );
+                this.packetQueue.clear();
             }
         }
 
@@ -673,9 +677,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     public void flushSendQueue() {
         if ( !this.packetQueue.isEmpty() ) {
-            List<PacketBuffer> drain = new ArrayList<>();
-            this.packetQueue.drainTo( drain );
-            this.postProcessWorker.sendPackets( drain );
+            PacketBuffer[] packets = new PacketBuffer[this.packetQueue.size()];
+            this.packetQueue.toArray( packets );
+            this.proxProx.getExecutorService().execute( new PostProcessWorker( this, packets ) );
+            this.packetQueue.clear();
         }
     }
 
