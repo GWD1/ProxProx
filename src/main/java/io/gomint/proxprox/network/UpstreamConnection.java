@@ -414,8 +414,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 this.entityRewriter.removeServerEntity( eID );
             }
 
-            move( 0, 4000, 0, 0, 0 );
-
             this.currentDownStream = null;
         }
 
@@ -662,7 +660,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
 
         // Update downstream ping
-        if ( this.proxProx.getConfig().isUseTCP() && this.currentDownStream != null ) {
+        if ( this.proxProx.getConfig().isUseTCP() && this.currentDownStream != null && this.currentDownStream.getTcpConnection() != null ) {
             UpdatePingPacket pingPacket = new UpdatePingPacket();
             pingPacket.setPing( (int) this.connection.getPing() );
             this.currentDownStream.getTcpConnection().send( pingPacket );
