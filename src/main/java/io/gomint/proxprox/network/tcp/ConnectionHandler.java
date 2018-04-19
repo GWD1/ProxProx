@@ -3,6 +3,7 @@ package io.gomint.proxprox.network.tcp;
 import com.google.common.collect.MapMaker;
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.network.UpstreamConnection;
+import io.gomint.proxprox.network.tcp.protocol.FlushTickPacket;
 import io.gomint.proxprox.network.tcp.protocol.Packet;
 import io.gomint.proxprox.network.tcp.protocol.SendPlayerToServerPacket;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
@@ -76,6 +77,8 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
             this.dataAcceptor.accept( ( (WrappedMCPEPacket) packet ).getBuffer() );
         } else if ( packet instanceof SendPlayerToServerPacket ) {
             this.upstreamConnection.connect( ( (SendPlayerToServerPacket) packet ).getHost(), ( (SendPlayerToServerPacket) packet ).getPort() );
+        } else if ( packet instanceof FlushTickPacket ) {
+            this.upstreamConnection.flushSendQueue();
         }
     }
 

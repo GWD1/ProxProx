@@ -633,10 +633,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     public void update() {
         // Send packets
-        if ( !this.packetQueue.isEmpty() ) {
-            List<PacketBuffer> drain = new ArrayList<>();
-            this.packetQueue.drainTo( drain );
-            this.postProcessWorker.sendPackets( drain );
+        if ( !this.proxProx.getConfig().isUseTCP() ) {
+            if ( !this.packetQueue.isEmpty() ) {
+                List<PacketBuffer> drain = new ArrayList<>();
+                this.packetQueue.drainTo( drain );
+                this.postProcessWorker.sendPackets( drain );
+            }
         }
 
         // Disconnect if needed
@@ -669,6 +671,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     public void resetDownStream() {
         this.currentDownStream = null;
+    }
+
+    public void flushSendQueue() {
+        if ( !this.packetQueue.isEmpty() ) {
+            List<PacketBuffer> drain = new ArrayList<>();
+            this.packetQueue.drainTo( drain );
+            this.postProcessWorker.sendPackets( drain );
+        }
     }
 
 }
