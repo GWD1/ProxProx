@@ -21,6 +21,8 @@ import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import org.slf4j.Logger;
@@ -88,50 +90,53 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         // Check if we use UDP or TCP for downstream connections
         if ( proxProx.getConfig().isUseTCP() ) {
-            try {
-                io.netty.bootstrap.Bootstrap bootstrap = Initializer.buildBootstrap( this.upstreamConnection, new Consumer<ConnectionHandler>() {
-                    @Override
-                    public void accept( ConnectionHandler connectionHandler ) {
-                        DownstreamConnection.this.tcpConnection = connectionHandler;
+            io.netty.bootstrap.Bootstrap bootstrap = Initializer.buildBootstrap( this.upstreamConnection, new Consumer<ConnectionHandler>() {
+                @Override
+                public void accept( ConnectionHandler connectionHandler ) {
+                    DownstreamConnection.this.tcpConnection = connectionHandler;
 
-                        connectionHandler.onData( new Consumer<PacketBuffer>() {
-                            @Override
-                            public void accept( PacketBuffer buffer ) {
-                                handlePacket( buffer, PacketReliability.RELIABLE_ORDERED, 0, true ); // There are no batches in TCP
-                            }
-                        } );
+                    connectionHandler.onData( new Consumer<PacketBuffer>() {
+                        @Override
+                        public void accept( PacketBuffer buffer ) {
+                            handlePacket( buffer, PacketReliability.RELIABLE_ORDERED, 0, true ); // There are no batches in TCP
+                        }
+                    } );
 
-                        connectionHandler.whenDisconnected( new Consumer<Void>() {
-                            @Override
-                            public void accept( Void aVoid ) {
-                                if ( upstreamConnection.isConnected() ) {
-                                    LOGGER.info( "Disconnected downstream..." );
-                                    if ( !DownstreamConnection.this.manualClose ) {
-                                        DownstreamConnection.this.close( true );
+                    connectionHandler.whenDisconnected( new Consumer<Void>() {
+                        @Override
+                        public void accept( Void aVoid ) {
+                            if ( upstreamConnection.isConnected() ) {
+                                LOGGER.info( "Disconnected downstream..." );
+                                if ( !DownstreamConnection.this.manualClose ) {
+                                    DownstreamConnection.this.close( true );
 
-                                        // Check if we need to disconnect upstream
-                                        if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
-                                            if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                                                return;
-                                            } else {
-                                                upstreamConnection.disconnect( "The Server has gone down" );
-                                            }
+                                    // Check if we need to disconnect upstream
+                                    if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                        if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                            return;
                                         } else {
-                                            upstreamConnection.resetPendingDownStream();
+                                            upstreamConnection.disconnect( "The Server has gone down" );
                                         }
+                                    } else {
+                                        upstreamConnection.resetPendingDownStream();
                                     }
                                 }
                             }
-                        } );
+                        }
+                    } );
 
-                        DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
+                    DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
+                }
+            } );
+            bootstrap.connect( this.ip, this.port ).addListener( new ChannelFutureListener() {
+                @Override
+                public void operationComplete( ChannelFuture channelFuture ) throws Exception {
+                    if ( !channelFuture.isSuccess() ) {
+                        LOGGER.warn( "Could not connect to {}:{}", DownstreamConnection.this.ip, DownstreamConnection.this.port, channelFuture.cause() );
+                        DownstreamConnection.this.upstreamConnection.resetPendingDownStream();
                     }
-                } );
-                bootstrap.connect( this.ip, this.port ).sync();
-            } catch ( InterruptedException e ) {
-                LOGGER.warn( "Could not connect to {}:{}", this.ip, this.port, e );
-                this.upstreamConnection.resetPendingDownStream();
-            }
+                }
+            } );
         } else {
             this.connection = new ClientSocket();
             this.connection.setMojangModificationEnabled( true );
