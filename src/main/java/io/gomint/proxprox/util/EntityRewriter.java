@@ -1,6 +1,7 @@
 package io.gomint.proxprox.util;
 
 import io.gomint.jraknet.PacketBuffer;
+import io.gomint.proxprox.network.DownstreamConnection;
 import io.gomint.proxprox.network.protocol.PacketInventoryTransaction;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +11,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -22,9 +22,11 @@ public class EntityRewriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger( EntityRewriter.class );
 
-    @Getter @Setter
+    @Getter
+    @Setter
     private long ownId;
-    @Getter @Setter
+    @Getter
+    @Setter
     private long currentDownStreamId;
     private AtomicLong idCounter = new AtomicLong( 0 );
 
@@ -42,13 +44,13 @@ public class EntityRewriter {
         return newEntityId;
     }
 
-    public PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer ) {
+    public PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer, DownstreamConnection connection ) {
         // Entity ID rewrites
         long entityId;
         switch ( packetId ) {
             case 0x4a:  // Boss event
                 entityId = buffer.readSignedVarInt();
-                long replacementID = getReplacementId( entityId );
+                long replacementID = getReplacementId( entityId, connection );
 
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
@@ -74,7 +76,7 @@ public class EntityRewriter {
             case 0x1D:  // Update attributes
             case 0x1C:  // Mob effect
                 entityId = buffer.readUnsignedVarLong();
-                replacementID = getReplacementId( entityId );
+                replacementID = getReplacementId( entityId, connection );
 
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
@@ -94,7 +96,7 @@ public class EntityRewriter {
                 int actionId = buffer.readSignedVarInt();
 
                 entityId = buffer.readUnsignedVarLong();
-                replacementID = getReplacementId( entityId );
+                replacementID = getReplacementId( entityId, connection );
 
                 if ( entityId != replacementID ) {
                     byte[] data = new byte[buffer.getRemaining()];
@@ -114,8 +116,8 @@ public class EntityRewriter {
             case 0x11: // Pickup entity
                 long itemId = buffer.readUnsignedVarLong();
                 long playerId = buffer.readUnsignedVarLong();
-                long replaceItemId = getReplacementId( itemId );
-                long replacePlayerId = getReplacementId( playerId );
+                long replaceItemId = getReplacementId( itemId, connection );
+                long replacePlayerId = getReplacementId( playerId, connection );
 
                 buffer = new PacketBuffer( 8 );
                 buffer.writeUnsignedVarLong( replaceItemId );
@@ -131,7 +133,7 @@ public class EntityRewriter {
                 int d = buffer.readUnsignedVarInt();
                 int e = buffer.readUnsignedVarInt();
                 entityId = buffer.readLLong(); // Yes, a LE long
-                replacementID = getReplacementId( entityId );
+                replacementID = getReplacementId( entityId, connection );
 
                 buffer = new PacketBuffer( 8 );
                 buffer.writeUnsignedVarInt( a );
@@ -148,14 +150,14 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public long getReplacementId( long entityId ) {
+    public long getReplacementId( long entityId, DownstreamConnection connection ) {
         if ( entityId == this.currentDownStreamId ) {
             return this.ownId;
         }
 
         Long rewrite = this.rewriteIds.get( entityId );
         if ( rewrite == null ) {
-            LOGGER.warn( "Got entity packet for entity not spawned yet: {}", entityId );
+            LOGGER.warn( "Got entity packet for entity not spawned yet: {}; Server {}:{}", entityId, connection.getIP(), connection.getPort(), new Exception() );
             return entityId;
         }
 

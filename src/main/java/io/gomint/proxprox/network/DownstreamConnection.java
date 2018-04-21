@@ -282,16 +282,16 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketEntityMetadata metadata = new PacketEntityMetadata();
                 metadata.deserialize( buffer );
 
-                metadata.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getEntityId() ) );
+                metadata.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getEntityId(), this ) );
 
                 // Rewrite metadata if needed
                 if ( metadata.getMetadata().has( 5 ) ) {
-                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getMetadata().getLong( 5 ) );
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getMetadata().getLong( 5 ), this );
                     metadata.getMetadata().putLong( 5, replacementId );
                 }
 
                 if ( metadata.getMetadata().has( 6 ) ) {
-                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getMetadata().getLong( 6 ) );
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getMetadata().getLong( 6 ), this );
                     metadata.getMetadata().putLong( 6, replacementId );
                 }
 
@@ -321,12 +321,12 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 // Rewrite metadata if needed
                 if ( packetAddEntity.getMetadataContainer().has( 5 ) ) {
-                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( packetAddEntity.getMetadataContainer().getLong( 5 ) );
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( packetAddEntity.getMetadataContainer().getLong( 5 ), this );
                     packetAddEntity.getMetadataContainer().putLong( 5, replacementId );
                 }
 
                 if ( packetAddEntity.getMetadataContainer().has( 6 ) ) {
-                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( packetAddEntity.getMetadataContainer().getLong( 6 ) );
+                    long replacementId = this.upstreamConnection.getEntityRewriter().getReplacementId( packetAddEntity.getMetadataContainer().getLong( 6 ), this );
                     packetAddEntity.getMetadataContainer().putLong( 6, replacementId );
                 }
 
@@ -431,7 +431,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 break;
 
             default:
-                buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer );
+                buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer, this );
                 this.upstreamConnection.send( packetId, buffer );
                 break;
         }
