@@ -337,7 +337,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.spawnedEntities.add( addedId );
                 this.upstreamConnection.send( packetAddPlayer );
 
-                LOGGER.info( "Got new player: {} / ID: {}", packetAddPlayer.getName(), packetAddPlayer.getEntityId() );
+                LOGGER.debug( "Got new player: {} / ID: {}", packetAddPlayer.getName(), packetAddPlayer.getEntityId() );
 
                 break;
 
