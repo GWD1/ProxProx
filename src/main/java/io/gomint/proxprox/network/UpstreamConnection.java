@@ -265,24 +265,35 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
                 this.proxProx.addPlayer( this );
 
-                // We need to start encryption first
-                this.proxProx.getWatchdog().add( 500, TimeUnit.MILLISECONDS );
+                if ( this.proxProx.getConfig().isDisableEncryption() ) {
+                    send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
 
-                this.encryptionHandler = new EncryptionHandler();
-                this.encryptionHandler.supplyClientKey( chainValidator.getClientPublicKey() );
-                if ( this.encryptionHandler.beginClientsideEncryption() ) {
-                    // Forge a JWT
-                    String encryptionRequestJWT = FORGER.forge( encryptionHandler.getServerPublic(), encryptionHandler.getServerPrivate(), encryptionHandler.getClientSalt() );
-                    LOGGER.debug( "Crafted JWT for client: {}", encryptionRequestJWT );
-
-                    PacketEncryptionRequest packetEncryptionRequest = new PacketEncryptionRequest();
-                    packetEncryptionRequest.setJwt( encryptionRequestJWT );
-                    send( packetEncryptionRequest );
+                    // Send resource pack stuff
+                    PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
+                    packetResourcePacksInfo.setMustAccept( false );
+                    packetResourcePacksInfo.setBehaviourPackEntries( new ArrayList<>() );
+                    packetResourcePacksInfo.setResourcePackEntries( new ArrayList<>() );
+                    send( packetResourcePacksInfo );
                 } else {
-                    disconnect( "Error in creating AES token" );
-                }
+                    // We need to start encryption first
+                    this.proxProx.getWatchdog().add( 500, TimeUnit.MILLISECONDS );
 
-                this.proxProx.getWatchdog().done();
+                    this.encryptionHandler = new EncryptionHandler();
+                    this.encryptionHandler.supplyClientKey( chainValidator.getClientPublicKey() );
+                    if ( this.encryptionHandler.beginClientsideEncryption() ) {
+                        // Forge a JWT
+                        String encryptionRequestJWT = FORGER.forge( encryptionHandler.getServerPublic(), encryptionHandler.getServerPrivate(), encryptionHandler.getClientSalt() );
+                        LOGGER.debug( "Crafted JWT for client: {}", encryptionRequestJWT );
+
+                        PacketEncryptionRequest packetEncryptionRequest = new PacketEncryptionRequest();
+                        packetEncryptionRequest.setJwt( encryptionRequestJWT );
+                        send( packetEncryptionRequest );
+                    } else {
+                        disconnect( "Error in creating AES token" );
+                    }
+
+                    this.proxProx.getWatchdog().done();
+                }
 
                 break;
 

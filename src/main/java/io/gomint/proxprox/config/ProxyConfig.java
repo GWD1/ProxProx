@@ -27,6 +27,9 @@ public class ProxyConfig extends SimpleConfig {
     // in general is not valid (certification issues)
     private boolean onlineMode = false;
 
+    @Comment("Disable encryption? This does reduce the amount of CPU needed, also it seems to cause more stability" )
+    private boolean disableEncryption = true;
+
     @Comment("Gomint servers can use TCP listeners instead of Raknet to safe additional network delay and encryption overheads")
     private boolean useTCP = true;
 
