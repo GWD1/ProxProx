@@ -27,6 +27,7 @@ import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
+import io.gomint.proxprox.util.DumpUtil;
 import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -145,8 +146,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             buffer.readShort();
         }
 
-        LOGGER.debug( "Got packet {}", Integer.toHexString( packetId & 0xFF ) );
-
         int pos = buffer.getPosition();
 
         // Minimalistic protocol
@@ -159,6 +158,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 // Parse the login packet
                 PacketLogin packet = new PacketLogin();
                 packet.deserialize( buffer );
+
+                LOGGER.info( "Login version number: " + packet.getProtocol() );
 
                 // Check versions
                 this.protocolVersion = packet.getProtocol();
