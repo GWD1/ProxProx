@@ -221,7 +221,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         int pos = buffer.getPosition();
 
-        LOGGER.debug( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
+        // LOGGER.info( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
 
         // Minimalistic protocol
         switch ( packetId ) {
@@ -265,7 +265,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketRemoveEntity removeEntity = new PacketRemoveEntity();
                 removeEntity.deserialize( buffer );
 
-                Long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId() );
+                Long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId(), this );
                 if ( entityId != null ) {
                     removeEntity.setEntityId( entityId );
 
@@ -303,7 +303,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddItem packetAddItem = new PacketAddItem();
                 packetAddItem.deserialize( buffer );
 
-                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId() );
+                long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId(), this );
                 packetAddItem.setEntityId( addedId );
                 spawnedEntities.add( addedId );
 
@@ -314,7 +314,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddEntity packetAddEntity = new PacketAddEntity();
                 packetAddEntity.deserialize( buffer );
 
-                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId(), this );
                 packetAddEntity.setEntityId( addedId );
 
                 this.spawnedEntities.add( addedId );
@@ -337,12 +337,12 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketAddPlayer packetAddPlayer = new PacketAddPlayer();
                 packetAddPlayer.deserialize( buffer );
 
-                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId() );
+                addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId(), this );
                 packetAddPlayer.setEntityId( addedId );
                 this.spawnedEntities.add( addedId );
                 this.upstreamConnection.send( packetAddPlayer );
 
-                LOGGER.debug( "Got new player: {} / ID: {}", packetAddPlayer.getName(), packetAddPlayer.getEntityId() );
+                LOGGER.info( "Got new player: {} / ID: {} for {} (Server: {}:{})", packetAddPlayer.getName(), packetAddPlayer.getEntityId(), this.upstreamConnection.getName(), this.ip, this.port );
 
                 break;
 

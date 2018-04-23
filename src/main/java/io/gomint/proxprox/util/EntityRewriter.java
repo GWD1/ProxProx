@@ -33,18 +33,20 @@ public class EntityRewriter {
     private Map<Long, Long> rewriteIds = new HashMap<>();
     private Map<Long, Long> serverRewriteIds = new HashMap<>();
 
-    public long addEntity( long entityID ) {
+    public synchronized long addEntity( long entityID, DownstreamConnection connection ) {
         long newEntityId = this.idCounter.incrementAndGet();
         if ( newEntityId == this.ownId ) {
             newEntityId = this.idCounter.incrementAndGet();
         }
+
+        LOGGER.debug( "Got new entity {} -> {} for {} (Server: {}:{})", entityID, newEntityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
 
         this.serverRewriteIds.put( newEntityId, entityID );
         this.rewriteIds.put( entityID, newEntityId );
         return newEntityId;
     }
 
-    public PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer, DownstreamConnection connection ) {
+    public synchronized PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer, DownstreamConnection connection ) {
         // Entity ID rewrites
         long entityId;
         switch ( packetId ) {
@@ -150,21 +152,26 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public long getReplacementId( long entityId, DownstreamConnection connection ) {
+    public synchronized long getReplacementId( long entityId, DownstreamConnection connection ) {
         if ( entityId == this.currentDownStreamId ) {
             return this.ownId;
         }
 
         Long rewrite = this.rewriteIds.get( entityId );
         if ( rewrite == null ) {
-            LOGGER.warn( "Got entity packet for entity not spawned yet: {}; Server {}:{}", entityId, connection.getIP(), connection.getPort(), new Exception() );
+            LOGGER.warn( "Got entity packet for entity not spawned yet: {} for {} (Server {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort(), new Exception() );
+
+            for ( Map.Entry<Long, Long> longLongEntry : this.rewriteIds.entrySet() ) {
+                LOGGER.debug( "{} -> {}", longLongEntry.getKey(), longLongEntry.getValue() );
+            }
+
             return entityId;
         }
 
         return rewrite;
     }
 
-    private long getReplacementIdForServer( long entityId ) {
+    private synchronized long getReplacementIdForServer( long entityId ) {
         if ( entityId == this.ownId ) {
             return this.currentDownStreamId;
         }
@@ -177,7 +184,7 @@ public class EntityRewriter {
         return rewriteId;
     }
 
-    public PacketBuffer rewriteClientToServer( byte packetId, int pos, PacketBuffer buffer ) {
+    public synchronized PacketBuffer rewriteClientToServer( byte packetId, int pos, PacketBuffer buffer ) {
         long entityId;
 
         switch ( packetId ) {
@@ -285,18 +292,20 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public Long removeEntity( long entityId ) {
+    public synchronized Long removeEntity( long entityId, DownstreamConnection connection ) {
         Long newEntity = this.rewriteIds.remove( entityId );
         if ( newEntity == null ) {
             LOGGER.warn( "Removing an entity which wasn't known. This could lead to side effect like players not showing correctly" );
             return null;
         }
 
+        // LOGGER.debug( "Removing entity {} for {} (Server: {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
+
         this.serverRewriteIds.remove( newEntity );
         return newEntity;
     }
 
-    public void removeServerEntity( long entityId ) {
+    public synchronized void removeServerEntity( long entityId ) {
         Long oldId = this.serverRewriteIds.remove( entityId );
         if ( oldId != null ) {
             this.rewriteIds.remove( oldId );
