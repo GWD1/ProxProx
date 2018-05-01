@@ -143,7 +143,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
+                    LOGGER.info( "Got socketEvent: " + socketEvent.getType().name() );
                     switch ( socketEvent.getType() ) {
                         case CONNECTION_ATTEMPT_SUCCEEDED:
                             // We got accepted *yay*
@@ -513,7 +513,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     public void send( Packet packet ) {
         PacketBuffer buffer = new PacketBuffer( 64 );
         buffer.writeByte( packet.getId() );
-        buffer.writeShort( (short) 0 );
+
+        if ( !( packet instanceof PacketBatch ) ) {
+            buffer.writeShort( (short) 0 );
+        }
+
         packet.serialize( buffer );
 
         // Do we send via TCP or UDP?
@@ -523,7 +527,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
-                this.proxProx.getExecutorService().execute( new PostProcessWorker( this, new PacketBuffer[]{ buffer } ) );
+                this.proxProx.getPacketExecutor().execute( new PostProcessWorker( this, new PacketBuffer[]{ buffer } ) );
             } else {
                 this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
             }
@@ -553,7 +557,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             packetBuffer.writeShort( (short) 0 );
             packetBuffer.writeBytes( data );
 
-            this.proxProx.getExecutorService().execute( new PostProcessWorker( this, new PacketBuffer[]{ packetBuffer } ) );
+            this.proxProx.getPacketExecutor().execute( new PostProcessWorker( this, new PacketBuffer[]{ packetBuffer } ) );
         }
     }
 

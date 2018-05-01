@@ -64,6 +64,8 @@ public class ProxProx implements Proxy {
     @Getter
     private ExecutorService executorService;
     @Getter
+    private ExecutorService packetExecutor;
+    @Getter
     private SyncTaskManager syncTaskManager;
 
     // Listener
@@ -116,6 +118,7 @@ public class ProxProx implements Proxy {
         };
 
         this.executorService = new ThreadPoolExecutor( 0, 512, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), threadFactory );
+        this.packetExecutor = Executors.newSingleThreadExecutor();
 
         // Build up watchdog
         this.watchdog = new Watchdog( this.executorService, this.running );
