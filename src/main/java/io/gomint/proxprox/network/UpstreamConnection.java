@@ -95,7 +95,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private int viewDistance = -1;
     private boolean disconnectNotified;
 
-
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
      *

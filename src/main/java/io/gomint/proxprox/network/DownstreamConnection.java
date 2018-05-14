@@ -191,7 +191,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     protected void setup() {
         super.setup();
 
-
         this.connection.getConnection().addDataProcessor( new Function<EncapsulatedPacket, EncapsulatedPacket>() {
             @Override
             public EncapsulatedPacket apply( EncapsulatedPacket data ) {
@@ -518,7 +517,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     public void send( Packet packet ) {
         PacketBuffer buffer = new PacketBuffer( 64 );
         buffer.writeByte( packet.getId() );
-        buffer.writeShort( (short) 0 );
+
+        if ( !( packet instanceof PacketBatch ) ) {
+            buffer.writeShort( (short) 0 );
+        }
+
         packet.serialize( buffer );
 
         // Do we send via TCP or UDP?
