@@ -430,6 +430,22 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 break;
 
+            case Protocol.PACKET_MOB_EFFECT:
+                PacketMobEffect mobEffect = new PacketMobEffect();
+                mobEffect.deserialize( buffer );
+
+                mobEffect.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( mobEffect.getEntityId(), this ) );
+
+                if ( mobEffect.getAction() == PacketMobEffect.EVENT_REMOVE ) {
+                    this.upstreamConnection.getEffectManager().remove( mobEffect.getEffectId() );
+                } else {
+                    this.upstreamConnection.getEffectManager().add( mobEffect.getEffectId(), System.currentTimeMillis() + mobEffect.getDuration() * 50 );
+                }
+
+                this.upstreamConnection.send( mobEffect );
+
+                break;
+
             default:
                 buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer, this );
                 this.upstreamConnection.send( packetId, buffer );

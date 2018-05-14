@@ -27,6 +27,7 @@ import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
+import io.gomint.proxprox.util.EffectManager;
 import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -80,6 +81,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Getter
     private EntityRewriter entityRewriter = new EntityRewriter();
+    @Getter
+    private EffectManager effectManager = new EffectManager();
     private int protocolVersion;
 
     // Last known good server
@@ -425,6 +428,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
                 send( new PacketRemoveEntity( eID ) );
                 this.entityRewriter.removeServerEntity( eID );
+            }
+
+            // Remove all effects
+            for ( Integer effectId : this.effectManager.getEffects() ) {
+                PacketMobEffect mobEffect = new PacketMobEffect();
+                mobEffect.setEntityId( this.entityRewriter.getOwnId() );
+                mobEffect.setAction( PacketMobEffect.EVENT_REMOVE );
+                mobEffect.setEffectId( effectId );
+                send( mobEffect );
             }
 
             this.currentDownStream = null;
