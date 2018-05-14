@@ -15,6 +15,7 @@ import io.gomint.proxprox.api.event.PlayerQuitEvent;
 import io.gomint.proxprox.commands.Commandend;
 import io.gomint.proxprox.commands.Commandplugins;
 import io.gomint.proxprox.config.ProxyConfig;
+import io.gomint.proxprox.network.PostProcessExecutorService;
 import io.gomint.proxprox.network.SocketEventListener;
 import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.plugin.PluginManager;
@@ -65,6 +66,8 @@ public class ProxProx implements Proxy {
     private ExecutorService executorService;
     @Getter
     private SyncTaskManager syncTaskManager;
+    @Getter
+    private PostProcessExecutorService processExecutorService;
 
     // Listener
     private ServerSocket serverSocket;
@@ -116,6 +119,7 @@ public class ProxProx implements Proxy {
         };
 
         this.executorService = new ThreadPoolExecutor( 0, 512, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), threadFactory );
+        this.processExecutorService = new PostProcessExecutorService();
 
         // Build up watchdog
         this.watchdog = new Watchdog( this.executorService, this.running );

@@ -101,6 +101,8 @@ public class SocketEventListener implements SocketEventHandler {
                             upstreamConnection.getDownStream().disconnect( socketEvent.getReason() );
                             upstreamConnection.resetDownStream();
                         }
+
+                        upstreamConnection.close();
                     }
                 } finally {
                     this.lock.writeLock().unlock();

@@ -27,7 +27,6 @@ import io.gomint.proxprox.jwt.*;
 import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
-import io.gomint.proxprox.util.DumpUtil;
 import io.gomint.proxprox.util.EntityRewriter;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -95,6 +94,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Getter
     private int viewDistance = -1;
     private boolean disconnectNotified;
+
 
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
@@ -650,7 +650,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             if ( !this.packetQueue.isEmpty() ) {
                 PacketBuffer[] packets = new PacketBuffer[this.packetQueue.size()];
                 this.packetQueue.toArray( packets );
-                this.proxProx.getExecutorService().execute( new PostProcessWorker( this, packets ) );
+                this.executor.addWork( this, packets );
                 this.packetQueue.clear();
             }
         }
@@ -691,7 +691,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         if ( !this.packetQueue.isEmpty() ) {
             PacketBuffer[] packets = new PacketBuffer[this.packetQueue.size()];
             this.packetQueue.toArray( packets );
-            this.proxProx.getExecutorService().execute( new PostProcessWorker( this, packets ) );
+            this.executor.addWork( this, packets );
             this.packetQueue.clear();
         }
     }

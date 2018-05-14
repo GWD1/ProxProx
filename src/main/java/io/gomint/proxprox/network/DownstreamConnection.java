@@ -191,6 +191,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     protected void setup() {
         super.setup();
 
+
         this.connection.getConnection().addDataProcessor( new Function<EncapsulatedPacket, EncapsulatedPacket>() {
             @Override
             public EncapsulatedPacket apply( EncapsulatedPacket data ) {
@@ -459,6 +460,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.close();
             this.connection = null;
         }
+
+        super.close();
     }
 
     public void disconnect( String reason ) {
@@ -479,6 +482,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.disconnect();
             this.tcpConnection = null;
         }
+
+        super.close();
     }
 
     @Override
@@ -523,7 +528,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
-                this.proxProx.getExecutorService().execute( new PostProcessWorker( this, new PacketBuffer[]{ buffer } ) );
+                this.executor.addWork( this, new PacketBuffer[]{ buffer } );
             } else {
                 this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
             }
@@ -553,7 +558,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             packetBuffer.writeShort( (short) 0 );
             packetBuffer.writeBytes( data );
 
-            this.proxProx.getExecutorService().execute( new PostProcessWorker( this, new PacketBuffer[]{ packetBuffer } ) );
+            this.executor.addWork( this, new PacketBuffer[]{ packetBuffer } );
         }
     }
 

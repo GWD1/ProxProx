@@ -1,7 +1,6 @@
 package io.gomint.proxprox.network;
 
 import io.gomint.jraknet.PacketBuffer;
-
 import io.gomint.proxprox.network.protocol.PacketBatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,10 +42,10 @@ public class PostProcessWorker implements Runnable {
         BatchStreamHolder holder = this.getHolder();
 
         // Batch them first
-        for ( PacketBuffer buffer : this.packets ) {
+        for ( PacketBuffer packet : this.packets ) {
             try {
-                writeVarInt( buffer.getPosition(), holder.getOutputStream() );
-                holder.getOutputStream().write( buffer.getBuffer(), buffer.getBufferOffset(), buffer.getPosition() - buffer.getBufferOffset() );
+                writeVarInt( packet.getPosition(), holder.getOutputStream() );
+                holder.getOutputStream().write( packet.getBuffer(), packet.getBufferOffset(), packet.getPosition() - packet.getBufferOffset() );
             } catch ( IOException e ) {
                 LOGGER.error( "Could not write packet data into batch: ", e );
             }

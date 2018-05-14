@@ -9,6 +9,7 @@ package io.gomint.proxprox.network;
 
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
+import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.protocol.PacketBatch;
 import lombok.Getter;
@@ -35,12 +36,14 @@ public abstract class AbstractConnection {
     protected ConnectionState state = ConnectionState.HANDSHAKE;
     @Getter
     protected EncryptionHandler encryptionHandler = null;
+    @Getter
+    protected PostProcessExecutor executor = null;
 
     /**
      * Setup the internal structures needed for the Connection
      */
     protected void setup() {
-
+        this.executor = ProxProx.instance.getProcessExecutorService().getExecutor();
     }
 
     /**
@@ -131,6 +134,13 @@ public abstract class AbstractConnection {
     }
 
     public abstract void send( Packet packet );
+
+    public void close() {
+        if ( this.executor != null ) {
+            ProxProx.instance.getProcessExecutorService().releaseExecutor( this.executor );
+            this.executor = null;
+        }
+    }
 
     protected enum ConnectionState {
         HANDSHAKE,
