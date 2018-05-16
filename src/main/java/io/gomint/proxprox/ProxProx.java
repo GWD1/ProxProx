@@ -211,6 +211,7 @@ public class ProxProx implements Proxy {
                 long currentMillis = System.currentTimeMillis();
                 this.syncTaskManager.update( currentMillis, lastTickTime );
 
+                this.socketEventListener.update();
                 for ( Map.Entry<UUID, Player> entry : this.players.entrySet() ) {
                     ( (UpstreamConnection) entry.getValue() ).update();
                 }

@@ -41,10 +41,7 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -128,20 +125,23 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     return null;
                 }
 
-                // Do we want to handle it?
-                try {
-                    handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
-                } catch ( Throwable t ) {
-                    LOGGER.warn( "Error in handling packet: ", t );
+                // Check if packet is batched
+                byte packetId = buffer.readByte();
+                if ( packetId == Protocol.PACKET_BATCH ) {
+                    // Decompress and decrypt
+                    byte[] pureData = handleBatchPacket( buffer );
+                    EncapsulatedPacket newPacket = new EncapsulatedPacket();
+                    newPacket.setPacketData( pureData );
+                    return newPacket;
                 }
 
-                return null; // Skip further processing of this packet
+                return data;
             }
         } );
     }
 
     @Override
-    protected void handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
+    protected void handlePacket( PacketBuffer buffer ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
         if ( packetId != Protocol.PACKET_BATCH ) {
@@ -153,7 +153,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Minimalistic protocol
         switch ( packetId ) {
             case Protocol.PACKET_BATCH:
-                this.handleBatchPacket( buffer, reliability, orderingChannel, batched );
+                this.disconnect( "Batch inside batch" );
                 break;
 
             case Protocol.PACKET_LOGIN:
@@ -653,6 +653,47 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     public boolean isConnected() {
         return this.connection.isConnected();
+    }
+
+    public void updateIncoming() {
+        // Update downstream first
+        if ( this.currentDownStream != null ) {
+            this.currentDownStream.updateIncoming();
+        }
+
+        if ( this.pendingDownStream != null ) {
+            this.pendingDownStream.updateIncoming();
+        }
+
+        // It seems that movement is sent last, but we need it first to check if player position of other packets align
+        List<PacketBuffer> packetBuffers = null;
+
+        EncapsulatedPacket packetData;
+        while ( ( packetData = this.connection.receive() ) != null ) {
+            if ( packetBuffers == null ) {
+                packetBuffers = new ArrayList<>();
+            }
+
+            packetBuffers.add( new PacketBuffer( packetData.getPacketData(), 0 ) );
+        }
+
+        if ( packetBuffers != null ) {
+            for ( PacketBuffer buffer : packetBuffers ) {
+                while ( buffer.getRemaining() > 0 ) {
+                    int packetLength = buffer.readUnsignedVarInt();
+
+                    byte[] payData = new byte[packetLength];
+                    buffer.readBytes( payData );
+                    PacketBuffer pktBuf = new PacketBuffer( payData, 0 );
+                    this.handlePacket( pktBuf );
+
+                    if ( pktBuf.getRemaining() > 0 ) {
+                        LOGGER.error( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x{} remaining {} bytes", Integer.toHexString( payData[0] ), pktBuf.getRemaining() );
+                        return;
+                    }
+                }
+            }
+        }
     }
 
     public void update() {
