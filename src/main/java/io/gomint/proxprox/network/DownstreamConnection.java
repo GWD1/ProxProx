@@ -95,12 +95,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 public void accept( ConnectionHandler connectionHandler ) {
                     DownstreamConnection.this.tcpConnection = connectionHandler;
 
-                    connectionHandler.onData( new Consumer<PacketBuffer>() {
-                        @Override
-                        public void accept( PacketBuffer buffer ) {
-                            handlePacket( buffer, PacketReliability.RELIABLE_ORDERED, 0, true ); // There are no batches in TCP
-                        }
-                    } );
+                    // There are no batches in TCP
+                    connectionHandler.onData( DownstreamConnection.this::handlePacket );
 
                     connectionHandler.whenDisconnected( new Consumer<Void>() {
                         @Override
@@ -143,7 +139,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    LOGGER.info( "Got socketEvent: " + socketEvent.getType().name() );
+                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
                     switch ( socketEvent.getType() ) {
                         case CONNECTION_ATTEMPT_SUCCEEDED:
                             // We got accepted *yay*
@@ -200,19 +196,53 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     return null;
                 }
 
-                try {
-                    handlePacket( buffer, data.getReliability(), data.getOrderingChannel(), false );
-                } catch ( Throwable t ) {
-                    LOGGER.error( "Error whilst handling packet: ", t );
+                // Check if packet is batched
+                byte packetId = buffer.readByte();
+                if ( packetId == Protocol.PACKET_BATCH ) {
+                    // Decompress and decrypt
+                    byte[] pureData = handleBatchPacket( buffer );
+                    EncapsulatedPacket newPacket = new EncapsulatedPacket();
+                    newPacket.setPacketData( pureData );
+                    return newPacket;
                 }
 
-                return null;
+                return data;
             }
         } );
     }
 
+    public void updateIncoming() {
+        if ( ProxProx.instance.getConfig().isUseTCP() ) {
+            return;
+        }
+
+        // It seems that movement is sent last, but we need it first to check if player position of other packets align
+        List<PacketBuffer> packetBuffers = null;
+
+        EncapsulatedPacket packetData;
+        while ( ( packetData = this.getConnection().receive() ) != null ) {
+            if ( packetBuffers == null ) {
+                packetBuffers = new ArrayList<>();
+            }
+
+            packetBuffers.add( new PacketBuffer( packetData.getPacketData(), 0 ) );
+        }
+
+        if ( packetBuffers != null ) {
+            for ( PacketBuffer buffer : packetBuffers ) {
+                // CHECKSTYLE:OFF
+                try {
+                    this.handlePacket( buffer );
+                } catch ( Exception e ) {
+                    LOGGER.error( "Error whilst processing packet: ", e );
+                }
+                // CHECKSTYLE:ON
+            }
+        }
+    }
+
     @Override
-    protected void handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched ) {
+    protected void handlePacket( PacketBuffer buffer ) {
         // Grab the packet ID from the packet's data
         byte packetId = buffer.readByte();
         if ( packetId != Protocol.PACKET_BATCH ) {
@@ -226,7 +256,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         // Minimalistic protocol
         switch ( packetId ) {
             case Protocol.PACKET_BATCH:
-                handleBatchPacket( buffer, reliability, orderingChannel, batched );
+                this.disconnect( "Batch inside batch" );
                 break;
 
             case Protocol.PACKET_START_GAME:
@@ -342,8 +372,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.spawnedEntities.add( addedId );
                 this.upstreamConnection.send( packetAddPlayer );
 
-                LOGGER.info( "Got new player: {} / ID: {} for {} (Server: {}:{})", packetAddPlayer.getName(), packetAddPlayer.getEntityId(), this.upstreamConnection.getName(), this.ip, this.port );
-
                 break;
 
             case Protocol.PACKET_ENCRYPTION_REQUEST:
@@ -430,6 +458,22 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 break;
 
+            case Protocol.PACKET_MOB_EFFECT:
+                PacketMobEffect mobEffect = new PacketMobEffect();
+                mobEffect.deserialize( buffer );
+
+                mobEffect.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( mobEffect.getEntityId(), this ) );
+
+                if ( mobEffect.getAction() == PacketMobEffect.EVENT_REMOVE ) {
+                    this.upstreamConnection.getEffectManager().remove( mobEffect.getEffectId() );
+                } else {
+                    this.upstreamConnection.getEffectManager().add( mobEffect.getEffectId(), System.currentTimeMillis() + mobEffect.getDuration() * 50 );
+                }
+
+                this.upstreamConnection.send( mobEffect );
+
+                break;
+
             default:
                 buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer, this );
                 this.upstreamConnection.send( packetId, buffer );
@@ -459,6 +503,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.close();
             this.connection = null;
         }
+
+        super.close();
     }
 
     public void disconnect( String reason ) {
@@ -479,6 +525,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.disconnect();
             this.tcpConnection = null;
         }
+
+        super.close();
     }
 
     @Override
@@ -527,7 +575,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
-                this.proxProx.getPacketExecutor().execute( new PostProcessWorker( this, new PacketBuffer[]{ buffer } ) );
+                this.executor.addWork( this, new PacketBuffer[]{ buffer } );
             } else {
                 this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
             }
@@ -557,7 +605,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             packetBuffer.writeShort( (short) 0 );
             packetBuffer.writeBytes( data );
 
-            this.proxProx.getPacketExecutor().execute( new PostProcessWorker( this, new PacketBuffer[]{ packetBuffer } ) );
+            this.executor.addWork( this, new PacketBuffer[]{ packetBuffer } );
         }
     }
 

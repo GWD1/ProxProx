@@ -9,6 +9,7 @@ package io.gomint.proxprox.network;
 
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.jraknet.PacketReliability;
+import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.protocol.PacketBatch;
 import lombok.Getter;
@@ -35,29 +36,24 @@ public abstract class AbstractConnection {
     protected ConnectionState state = ConnectionState.HANDSHAKE;
     @Getter
     protected EncryptionHandler encryptionHandler = null;
+    @Getter
+    protected PostProcessExecutor executor = null;
 
     /**
      * Setup the internal structures needed for the Connection
      */
     protected void setup() {
-
+        this.executor = ProxProx.instance.getProcessExecutorService().getExecutor();
     }
 
     /**
      * Handles compressed batch packets directly by decoding their payload.
      *
-     * @param buffer          The buffer containing the batch packet's data (except packet ID)
-     * @param reliability     The reliability of the packet
-     * @param orderingChannel The ordering channel of this batched packet
-     * @param batch           This boolean indicated if the buffer is coming out of a batched packet or not
+     * @param buffer The buffer containing the batch packet's data (except packet ID)
+     * @return decompressed and decrypted data
      */
-    void handleBatchPacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batch ) {
-        if ( batch ) {
-            logger.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            return;
-        }
-
-        // Do we need to decrypt here?
+    byte[] handleBatchPacket( PacketBuffer buffer ) {
+        // Encrypted?
         byte[] input = new byte[buffer.getRemaining()];
         System.arraycopy( buffer.getBuffer(), buffer.getPosition(), input, 0, input.length );
         if ( this.encryptionHandler != null ) {
@@ -65,7 +61,7 @@ public abstract class AbstractConnection {
             if ( input == null ) {
                 // Decryption error
                 disconnect( "Checksum of encrypted packet was wrong" );
-                return;
+                return null;
             }
         }
 
@@ -80,37 +76,18 @@ public abstract class AbstractConnection {
                 bout.write( batchIntermediate, 0, read );
             }
         } catch ( IOException e ) {
-            logger.error( "Failed to decompress batch packet", e );
-            return;
+            return null;
         }
 
-        byte[] payload = bout.toByteArray();
-
-        PacketBuffer payloadBuffer = new PacketBuffer( payload, 0 );
-        while ( payloadBuffer.getRemaining() > 0 ) {
-            int packetLength = payloadBuffer.readUnsignedVarInt();
-
-            byte[] payData = new byte[packetLength];
-            payloadBuffer.readBytes( payData );
-            PacketBuffer pktBuf = new PacketBuffer( payData, 0 );
-            this.handlePacket( pktBuf, reliability, orderingChannel, true );
-
-            if ( pktBuf.getRemaining() > 0 ) {
-                logger.error( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x{} remaining {} bytes", Integer.toHexString( payData[0] ), pktBuf.getRemaining() );
-                return;
-            }
-        }
+        return bout.toByteArray();
     }
 
     /**
      * Little internal handler for packets
      *
      * @param buffer          The buffer which holds the packet
-     * @param reliability     The reliability of the packet
-     * @param orderingChannel The ordering channel from which this data comes
-     * @param batched         Boolean indicating if buffer is coming out of a batched packet
      */
-    protected abstract void handlePacket( PacketBuffer buffer, PacketReliability reliability, int orderingChannel, boolean batched );
+    protected abstract void handlePacket( PacketBuffer buffer );
 
     public abstract void disconnect( String message );
 
@@ -131,6 +108,13 @@ public abstract class AbstractConnection {
     }
 
     public abstract void send( Packet packet );
+
+    public void close() {
+        if ( this.executor != null ) {
+            ProxProx.instance.getProcessExecutorService().releaseExecutor( this.executor );
+            this.executor = null;
+        }
+    }
 
     protected enum ConnectionState {
         HANDSHAKE,

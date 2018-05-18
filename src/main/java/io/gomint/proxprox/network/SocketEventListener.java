@@ -101,12 +101,25 @@ public class SocketEventListener implements SocketEventHandler {
                             upstreamConnection.getDownStream().disconnect( socketEvent.getReason() );
                             upstreamConnection.resetDownStream();
                         }
+
+                        upstreamConnection.close();
                     }
                 } finally {
                     this.lock.writeLock().unlock();
                 }
 
                 break;
+        }
+    }
+
+    public void update() {
+        this.lock.readLock().lock();
+        try {
+            for ( UpstreamConnection upstreamConnection : this.connections.values() ) {
+                upstreamConnection.updateIncoming();
+            }
+        } finally {
+            this.lock.readLock().unlock();
         }
     }
 
@@ -118,18 +131,6 @@ public class SocketEventListener implements SocketEventHandler {
             }
         } finally {
             this.lock.readLock().unlock();
-        }
-    }
-
-    public void registerNewChannel( String channel, int channelId ) {
-        for ( UpstreamConnection upstreamConnection : this.connections.values() ) {
-            if ( upstreamConnection.getDownStream() != null  ) {
-                PacketCustomProtocol packetCustomProtocol = new PacketCustomProtocol();
-                packetCustomProtocol.setMode( 0 );
-                packetCustomProtocol.setChannel( channelId );
-                packetCustomProtocol.setChannelName( channel );
-                upstreamConnection.getDownStream().send( packetCustomProtocol );
-            }
         }
     }
 

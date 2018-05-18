@@ -76,7 +76,6 @@ public class EntityRewriter {
             case 0x1B:  // Entity event
             case 0x27:  // Entity metadata
             case 0x1D:  // Update attributes
-            case 0x1C:  // Mob effect
                 entityId = buffer.readUnsignedVarLong();
                 replacementID = getReplacementId( entityId, connection );
 
