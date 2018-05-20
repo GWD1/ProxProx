@@ -46,7 +46,7 @@
         <dependency>
             <groupId>io.gomint</groupId>
             <artifactId>jraknet</artifactId>
-            <version>5.1.0-SNAPSHOT</version>
+            <version>5.2.0-SNAPSHOT</version>
         </dependency>
 
         <!-- Logging -->
