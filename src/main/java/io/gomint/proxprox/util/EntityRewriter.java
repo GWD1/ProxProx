@@ -158,7 +158,7 @@ public class EntityRewriter {
 
         Long rewrite = this.rewriteIds.get( entityId );
         if ( rewrite == null ) {
-            LOGGER.warn( "Got entity packet for entity not spawned yet: {} for {} (Server {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort(), new Exception() );
+            LOGGER.warn( "Got entity packet for entity not spawned yet: {} for {} (Server {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
 
             for ( Map.Entry<Long, Long> longLongEntry : this.rewriteIds.entrySet() ) {
                 LOGGER.debug( "{} -> {}", longLongEntry.getKey(), longLongEntry.getValue() );
