@@ -59,6 +59,7 @@ public class MojangLoginForger {
         extraData.put( "displayName", this.username );
         extraData.put( "identity", this.uuid.toString() );
         extraData.put( "proxprox.xuid", this.xuid );
+        extraData.put( "xuid", "" ); // Because dylan forgot to check for NULL, poor dylan
 
         claims.put( "extraData", extraData );
         claims.put( "identityPublicKey", publicKeyBase64 );
