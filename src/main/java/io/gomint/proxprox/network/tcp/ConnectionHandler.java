@@ -74,7 +74,9 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     @Override
     protected void channelRead0( ChannelHandlerContext channelHandlerContext, final Packet packet ) throws Exception {
         if ( packet instanceof WrappedMCPEPacket ) {
-            this.dataAcceptor.accept( ( (WrappedMCPEPacket) packet ).getBuffer() );
+            for ( PacketBuffer buffer : ( (WrappedMCPEPacket) packet ).getBuffer() ) {
+                this.dataAcceptor.accept( buffer );
+            }
         } else if ( packet instanceof SendPlayerToServerPacket ) {
             this.upstreamConnection.connect( ( (SendPlayerToServerPacket) packet ).getHost(), ( (SendPlayerToServerPacket) packet ).getPort() );
         } else if ( packet instanceof FlushTickPacket ) {

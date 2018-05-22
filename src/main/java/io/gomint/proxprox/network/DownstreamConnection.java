@@ -251,7 +251,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         int pos = buffer.getPosition();
 
-        // LOGGER.info( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
+        LOGGER.debug( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
 
         // Minimalistic protocol
         switch ( packetId ) {
@@ -571,7 +571,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         // Do we send via TCP or UDP?
         if ( this.tcpConnection != null ) {
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
-            mcpePacket.setBuffer( buffer );
+            mcpePacket.setBuffer( new PacketBuffer[]{ buffer } );
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
@@ -594,7 +594,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             newBuffer.writeBytes( data );
 
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
-            mcpePacket.setBuffer( newBuffer );
+            mcpePacket.setBuffer( new PacketBuffer[]{ newBuffer } );
             this.tcpConnection.send( mcpePacket );
         } else {
             byte[] data = new byte[buffer.getRemaining()];

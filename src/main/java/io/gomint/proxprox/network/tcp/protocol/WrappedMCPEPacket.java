@@ -7,12 +7,12 @@ import java.util.Arrays;
 
 /**
  * @author geNAZt
- * @version 1.0
+ * @version 2.0
  */
 @Data
 public class WrappedMCPEPacket extends Packet {
 
-    private PacketBuffer buffer;
+    private PacketBuffer[] buffer;
 
     public WrappedMCPEPacket() {
         super( (byte) 0x01 );
@@ -20,14 +20,25 @@ public class WrappedMCPEPacket extends Packet {
 
     @Override
     public void read( ByteBuf buf ) {
-        byte[] data = new byte[buf.readableBytes()];
-        buf.readBytes( data );
-        this.buffer = new PacketBuffer( data, 0 );
+        // First is a short showing how many packets are there
+        short amountOfPackets = buf.readShort();
+        this.buffer = new PacketBuffer[amountOfPackets];
+        for ( short i = 0; i < amountOfPackets; i++ ) {
+            int bufferLength = buf.readInt();
+            byte[] data = new byte[bufferLength];
+            buf.readBytes( data );
+            this.buffer[i] = new PacketBuffer( data, 0 );
+        }
     }
 
     @Override
     public void write( ByteBuf buf ) {
-        buf.writeBytes( Arrays.copyOf( this.buffer.getBuffer(), this.buffer.getPosition() ) );
+        buf.writeShort( this.buffer.length );
+        for ( PacketBuffer buffer : this.buffer ) {
+            byte[] data = Arrays.copyOf( buffer.getBuffer(), buffer.getPosition() );
+            buf.writeInt( data.length );
+            buf.writeBytes( data );
+        }
     }
 
 }
