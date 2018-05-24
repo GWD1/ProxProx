@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -30,10 +31,10 @@ public class EntityRewriter {
     private long currentDownStreamId;
     private AtomicLong idCounter = new AtomicLong( 0 );
 
-    private Map<Long, Long> rewriteIds = new HashMap<>();
-    private Map<Long, Long> serverRewriteIds = new HashMap<>();
+    private Map<Long, Long> rewriteIds = new ConcurrentHashMap<>();
+    private Map<Long, Long> serverRewriteIds = new ConcurrentHashMap<>();
 
-    public synchronized long addEntity( long entityID, DownstreamConnection connection ) {
+    public long addEntity( long entityID, DownstreamConnection connection ) {
         long newEntityId = this.idCounter.incrementAndGet();
         if ( newEntityId == this.ownId ) {
             newEntityId = this.idCounter.incrementAndGet();
@@ -46,7 +47,7 @@ public class EntityRewriter {
         return newEntityId;
     }
 
-    public synchronized PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer, DownstreamConnection connection ) {
+    public PacketBuffer rewriteServerToClient( byte packetId, int pos, PacketBuffer buffer, DownstreamConnection connection ) {
         // Entity ID rewrites
         long entityId;
         switch ( packetId ) {
@@ -151,7 +152,7 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public synchronized long getReplacementId( long entityId, DownstreamConnection connection ) {
+    public long getReplacementId( long entityId, DownstreamConnection connection ) {
         if ( entityId == this.currentDownStreamId ) {
             return this.ownId;
         }
@@ -170,7 +171,7 @@ public class EntityRewriter {
         return rewrite;
     }
 
-    private synchronized long getReplacementIdForServer( long entityId ) {
+    private long getReplacementIdForServer( long entityId ) {
         if ( entityId == this.ownId ) {
             return this.currentDownStreamId;
         }
@@ -183,7 +184,7 @@ public class EntityRewriter {
         return rewriteId;
     }
 
-    public synchronized PacketBuffer rewriteClientToServer( byte packetId, int pos, PacketBuffer buffer ) {
+    public PacketBuffer rewriteClientToServer( byte packetId, int pos, PacketBuffer buffer ) {
         long entityId;
 
         switch ( packetId ) {
@@ -291,7 +292,7 @@ public class EntityRewriter {
         return buffer;
     }
 
-    public synchronized Long removeEntity( long entityId, DownstreamConnection connection ) {
+    public Long removeEntity( long entityId, DownstreamConnection connection ) {
         Long newEntity = this.rewriteIds.remove( entityId );
         if ( newEntity == null ) {
             LOGGER.warn( "Removing an entity which wasn't known. This could lead to side effect like players not showing correctly" );
@@ -304,7 +305,7 @@ public class EntityRewriter {
         return newEntity;
     }
 
-    public synchronized void removeServerEntity( long entityId ) {
+    public void removeServerEntity( long entityId ) {
         Long oldId = this.serverRewriteIds.remove( entityId );
         if ( oldId != null ) {
             this.rewriteIds.remove( oldId );
