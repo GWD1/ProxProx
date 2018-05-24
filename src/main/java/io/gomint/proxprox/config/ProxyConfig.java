@@ -23,7 +23,7 @@ public class ProxyConfig extends SimpleConfig {
     private int port = 19132;
 
     @Comment( "The maximum number of players to play on this proxy" )
-    private int maxPlayers;
+    private int maxPlayers = 100;
 
     @Comment( "Motd of this proxy" )
     private String motd = "§6ProxProx §7Development Build";
