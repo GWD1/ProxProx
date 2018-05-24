@@ -159,7 +159,7 @@ public class ProxProx implements Proxy {
         this.pluginManager.registerCommand( null, new Commandplugins( this.pluginManager ) );
 
         // Bind upstream UDP Raknet
-        this.serverSocket = new ServerSocket( LoggerFactory.getLogger( "jRaknet" ), 10000 );
+        this.serverSocket = new ServerSocket( LoggerFactory.getLogger( "jRaknet" ), this.config.getMaxPlayers() );
         this.serverSocket.setMojangModificationEnabled( true );
 
         this.socketEventListener = new SocketEventListener( this );

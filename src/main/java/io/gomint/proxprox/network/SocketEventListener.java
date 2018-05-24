@@ -49,10 +49,10 @@ public class SocketEventListener implements SocketEventHandler {
         switch ( socketEvent.getType() ) {
             case UNCONNECTED_PING:
                 // Throw event around
-                ProxyPingEvent event = this.proxProx .getPluginManager().callEvent( new ProxyPingEvent(
-                        "ProxProx Test",
+                ProxyPingEvent event = this.proxProx.getPluginManager().callEvent( new ProxyPingEvent(
+                        this.proxProx.getConfig().getMotd(),
                         this.proxProx.getPlayers().size(),
-                        10000
+                        this.proxProx.getConfig().getMaxPlayers()
                 ) );
 
                 socketEvent.getPingPongInfo().setMotd( "MCPE;" + event.getMotd() + ";" + Protocol.MINECRAFT_PE_PROTOCOL_VERSION +

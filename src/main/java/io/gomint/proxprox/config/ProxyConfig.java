@@ -18,8 +18,15 @@ import lombok.Data;
 @Data
 public class ProxyConfig extends SimpleConfig {
 
+    @Comment( "The host and port to bind the server to" )
     private String ip = "0.0.0.0";
     private int port = 19132;
+
+    @Comment( "The maximum number of players to play on this proxy" )
+    private int maxPlayers;
+
+    @Comment( "Motd of this proxy" )
+    private String motd = "§6ProxProx §7Development Build";
 
     private ServerConfig defaultServer = new ServerConfig( "127.0.0.1", 19134 );
 
