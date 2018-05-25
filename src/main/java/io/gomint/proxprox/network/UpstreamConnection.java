@@ -688,7 +688,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     this.handlePacket( pktBuf );
 
                     if ( pktBuf.getRemaining() > 0 ) {
-                        LOGGER.error( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x{} remaining {} bytes", Integer.toHexString( payData[0] ), pktBuf.getRemaining() );
+                        LOGGER.debug( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x{} remaining {} bytes", Integer.toHexString( payData[0] ), pktBuf.getRemaining() );
                         return;
                     }
                 }
