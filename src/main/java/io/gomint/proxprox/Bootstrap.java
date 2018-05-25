@@ -22,6 +22,7 @@ import java.net.URLClassLoader;
  * entry point.
  *
  * @author geNAZt
+ * @author Shad0wCore
  * @version 1.0
  */
 public final class Bootstrap {

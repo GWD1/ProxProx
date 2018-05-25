@@ -44,7 +44,7 @@ to follow the above class layout. All blank lines are intentional.
 
 1. Before you begin to declare your class you will need to insert a JavaDoc comment which includes at least
    an author tag that contains your username as well as a version tag which will always contain 1.0 unless
-   you are specifcally advised to change this number. Whenever you make major changes to a class that was not
+   you are specifically advised to change this number. Whenever you make major changes to a class that was not
    created by you make sure to add your name to the authors list.
 2. Notice the blank line right after the opening brace of the class and just before its closing brace.
 3. If your class has got nested enumerations or similar you should put them at the top of the file

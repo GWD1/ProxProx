@@ -29,19 +29,16 @@ import java.util.*;
  * </ul>
  *
  * @author Shad0wCore
- * @version 1.0
+ * @version 1.0.1
  */
 public final class LibraryHelper {
-
-    public static final File LIBRARY_DIRECTORY = new File("libs/");
-    public static final Logger LOGGER = LoggerFactory.getLogger(LibraryHelper.class);
 
     private static class ActionRegistry {
         /* Registered handlers */
         private static final Map<String, Class<? extends LibraryActionHandler>> ACTION_HANDLERS = new HashMap<>();
         private static final Logger LOGGER = LoggerFactory.getLogger(ActionRegistry.class);
 
-        /* Default handlers*/
+        // ====================================== DEFAULT HANDLERS ====================================== //
         static {
             assignHandler("download", DownloadLibraryActionHandler.class);
             assignHandler("delete", DeleteLibraryActionHandler.class);
@@ -86,6 +83,9 @@ public final class LibraryHelper {
 
     }
 
+    public static final File LIBRARY_DIRECTORY = new File("libs/");
+    public static final Logger LOGGER = LoggerFactory.getLogger(LibraryHelper.class);
+
     public LibraryHelper(Bootstrap bootstrap) { }
 
     public void checkDepFile() {
@@ -108,18 +108,30 @@ public final class LibraryHelper {
         }
     }
 
+    // ====================================== DOWNLOAD ====================================== //
+
+    /** @deprecated Planed for removal. Not being used as {@link Bootstrap} is using the {@link #checkDepFile()} method */
+    @Deprecated
     public void download(URL libraryUrl) {
         dispatchAction("download", libraryUrl.toString(), LIBRARY_DIRECTORY.toString());
     }
 
+    /** @deprecated Planed for removal. Not being used as {@link Bootstrap} is using the {@link #checkDepFile()} method */
+    @Deprecated
     public void download(String libraryUrl) {
         dispatchAction("download", libraryUrl, LIBRARY_DIRECTORY.toString());
     }
 
+    // ====================================== DELETE ====================================== //
+
+    /** @deprecated Planed for removal. Not being used as {@link Bootstrap} is using the {@link #checkDepFile()} method */
+    @Deprecated
     public void delete(String libraryName) {
         dispatchAction("delete", libraryName, LIBRARY_DIRECTORY.toString());
     }
 
+    /** @deprecated Planed for removal. Not being used as {@link Bootstrap} is using the {@link #checkDepFile()} method */
+    @Deprecated
     public void deleteAll() {
         dispatchAction("deleteAll", LIBRARY_DIRECTORY.toString());
     }
