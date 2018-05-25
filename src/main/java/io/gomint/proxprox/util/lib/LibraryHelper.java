@@ -86,8 +86,6 @@ public final class LibraryHelper {
     public static final File LIBRARY_DIRECTORY = new File("libs/");
     public static final Logger LOGGER = LoggerFactory.getLogger(LibraryHelper.class);
 
-    public LibraryHelper(Bootstrap bootstrap) { }
-
     public void checkDepFile() {
         // Check if we are able to skip this
         if (System.getProperty("skip.libCheck", "false").equals("true")) { return; }

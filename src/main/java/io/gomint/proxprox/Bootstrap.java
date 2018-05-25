@@ -28,11 +28,7 @@ import java.net.URLClassLoader;
 public final class Bootstrap {
 
     private static final Logger LOGGER = LoggerFactory.getLogger( Bootstrap.class );
-    private static LibraryHelper libraryHelper;
-
-    private Bootstrap() {
-        Bootstrap.libraryHelper = new LibraryHelper(this);
-    }
+    private static final LibraryHelper LIBRARY_HELPER = new LibraryHelper();;
 
     /**
      * Main entry point. May be used for custom dependency injection, dynamic
@@ -58,7 +54,7 @@ public final class Bootstrap {
         }
 
         // Check the libs (versions and artifacts)
-        libraryHelper.checkDepFile();
+        LIBRARY_HELPER.checkDepFile();
 
         File[] files = libraryDirectory.listFiles();
         if ( files == null ) {
@@ -71,7 +67,7 @@ public final class Bootstrap {
             if ( file.getAbsolutePath().endsWith( ".jar" ) ) {
                 try {
                     LOGGER.info( "Loading library: " + file.getAbsolutePath() );
-                    libraryHelper.addJarToClasspath( file );
+                    LIBRARY_HELPER.addJarToClasspath( file );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }
