@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox;
 
+import io.gomint.proxprox.util.RuntimeUtil;
 import io.gomint.proxprox.util.lib.LibraryHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -67,7 +68,7 @@ public final class Bootstrap {
             if ( file.getAbsolutePath().endsWith( ".jar" ) ) {
                 try {
                     LOGGER.info( "Loading library: " + file.getAbsolutePath() );
-                    LIBRARY_HELPER.addJarToClasspath( file );
+                    RuntimeUtil.addJarToClasspath( file );
                 } catch ( IOException e ) {
                     e.printStackTrace();
                 }
