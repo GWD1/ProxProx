@@ -90,7 +90,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         // Check if we use UDP or TCP for downstream connections
         if ( proxProx.getConfig().isUseTCP() ) {
-            io.netty.bootstrap.Bootstrap bootstrap = Initializer.buildBootstrap( this.upstreamConnection, new Consumer<ConnectionHandler>() {
+            io.netty.bootstrap.Bootstrap bootstrap = Initializer.buildBootstrap( this.upstreamConnection, ip, port, new Consumer<ConnectionHandler>() {
                 @Override
                 public void accept( ConnectionHandler connectionHandler ) {
                     DownstreamConnection.this.tcpConnection = connectionHandler;

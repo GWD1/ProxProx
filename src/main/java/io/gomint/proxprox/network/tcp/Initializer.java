@@ -20,8 +20,8 @@ public class Initializer {
         EVENT_LOOP_GROUP = Pipeline.newEventLoopGroup( 0, new ThreadFactoryBuilder().setNameFormat( "TCP Threads" ).build() );
     }
 
-    public static Bootstrap buildBootstrap( UpstreamConnection upstreamConnection, final Consumer<ConnectionHandler> connectionHandlerCallback ) {
-        final ConnectionHandler connectionHandler = new ConnectionHandler( upstreamConnection );
+    public static Bootstrap buildBootstrap( UpstreamConnection upstreamConnection, String ip, int port, final Consumer<ConnectionHandler> connectionHandlerCallback ) {
+        final ConnectionHandler connectionHandler = new ConnectionHandler( upstreamConnection, ip, port );
 
         final Bootstrap b = new Bootstrap()
                 .group( EVENT_LOOP_GROUP )

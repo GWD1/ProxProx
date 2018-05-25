@@ -32,9 +32,14 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
 
     private final UpstreamConnection upstreamConnection;
 
-    ConnectionHandler( UpstreamConnection connection ) {
+    private final String ip;
+    private final int port;
+
+    ConnectionHandler( UpstreamConnection connection, String ip, int port ) {
         super( true );
         this.upstreamConnection = connection;
+        this.ip = ip;
+        this.port = port;
     }
 
     @Override
@@ -86,7 +91,8 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
 
     @Override
     public void exceptionCaught( ChannelHandlerContext ctx, Throwable cause ) throws Exception {
-        LOGGER.error( "Caught exception in connection handling: ", cause );
+        LOGGER.error( "Caught exception in connection (connected to {}:{}) handling: ", this.ip, this.port, cause );
+        this.disconnect();
     }
 
     public void onData( Consumer<PacketBuffer> consumer ) {
