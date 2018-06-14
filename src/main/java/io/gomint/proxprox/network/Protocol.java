@@ -13,7 +13,7 @@ package io.gomint.proxprox.network;
  */
 public class Protocol {
 
-    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = 271;
+    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = 274;
     public static final int MINECRAFT_PE_PROTOCOL_VERSION = 261;
     public static final String MINECRAFT_PE_NETWORK_VERSION = "1.4.0";
 
