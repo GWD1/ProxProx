@@ -11,6 +11,8 @@ import io.netty.buffer.PooledByteBufAllocator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * @author geNAZt
  * @version 1.0
@@ -26,9 +28,9 @@ public class PostProcessWorker implements Runnable {
     }
 
     private final AbstractConnection connection;
-    private final PacketBuffer[] packets;
+    private final List<PacketBuffer> packets;
 
-    public PostProcessWorker( AbstractConnection connection, PacketBuffer[] packets ) {
+    public PostProcessWorker( AbstractConnection connection, List<PacketBuffer> packets ) {
         this.connection = connection;
         this.packets = packets;
     }

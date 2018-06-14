@@ -7,7 +7,14 @@
 
 package io.gomint.proxprox.network;
 
-import io.gomint.jraknet.*;
+import io.gomint.jraknet.ClientSocket;
+import io.gomint.jraknet.Connection;
+import io.gomint.jraknet.EncapsulatedPacket;
+import io.gomint.jraknet.PacketBuffer;
+import io.gomint.jraknet.PacketReliability;
+import io.gomint.jraknet.Socket;
+import io.gomint.jraknet.SocketEvent;
+import io.gomint.jraknet.SocketEventHandler;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.event.PlayerSwitchedEvent;
@@ -16,7 +23,21 @@ import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.api.network.PacketSender;
 import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
-import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.network.protocol.PacketAddEntity;
+import io.gomint.proxprox.network.protocol.PacketAddItem;
+import io.gomint.proxprox.network.protocol.PacketAddPlayer;
+import io.gomint.proxprox.network.protocol.PacketBatch;
+import io.gomint.proxprox.network.protocol.PacketDisconnect;
+import io.gomint.proxprox.network.protocol.PacketEncryptionReady;
+import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
+import io.gomint.proxprox.network.protocol.PacketEntityMetadata;
+import io.gomint.proxprox.network.protocol.PacketMobEffect;
+import io.gomint.proxprox.network.protocol.PacketPlayState;
+import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
+import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
+import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
+import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
+import io.gomint.proxprox.network.protocol.PacketStartGame;
 import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
@@ -30,7 +51,13 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
 import java.security.Key;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -575,7 +602,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
             if ( !( packet instanceof PacketBatch ) ) {
-                this.executor.addWork( this, new PacketBuffer[]{ buffer } );
+                this.executor.addWork( this, Collections.singletonList( buffer ) );
             } else {
                 this.getConnection().send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
             }
@@ -605,7 +632,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             packetBuffer.writeShort( (short) 0 );
             packetBuffer.writeBytes( data );
 
-            this.executor.addWork( this, new PacketBuffer[]{ packetBuffer } );
+            this.executor.addWork( this, Collections.singletonList( packetBuffer ) );
         }
     }
 

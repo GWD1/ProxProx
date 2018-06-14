@@ -11,6 +11,7 @@ import io.gomint.jraknet.PacketBuffer;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,7 +27,7 @@ public class PostProcessExecutor {
     private AtomicInteger connectionsInUse = new AtomicInteger( 0 );
     private Executor executor = Executors.newSingleThreadExecutor();
 
-    public void addWork( AbstractConnection connection, PacketBuffer[] packets ) {
+    public void addWork( AbstractConnection connection, List<PacketBuffer> packets ) {
         this.executor.execute( new PostProcessWorker( connection, packets ) );
     }
 
