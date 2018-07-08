@@ -29,7 +29,7 @@ import java.net.URLClassLoader;
 public final class Bootstrap {
 
     private static final Logger LOGGER = LoggerFactory.getLogger( Bootstrap.class );
-    private static final LibraryHelper LIBRARY_HELPER = new LibraryHelper();;
+    private static final LibraryHelper LIBRARY_HELPER = new LibraryHelper();
 
     /**
      * Main entry point. May be used for custom dependency injection, dynamic
@@ -39,14 +39,6 @@ public final class Bootstrap {
      * @param args The command-line arguments to be passed to the entryClass
      */
     public static void main( String[] args ) {
-        new Bootstrap();
-
-        // Check if classloader has been changed (it should be a URLClassLoader)
-        if ( !( ClassLoader.getSystemClassLoader() instanceof URLClassLoader ) ) {
-            System.out.println( "System Classloader is no URLClassloader" );
-            System.exit( -1 );
-        }
-
         // Check if we need to create the libs Folder
         File libraryDirectory = LibraryHelper.LIBRARY_DIRECTORY;
         if ( !libraryDirectory.exists() && !libraryDirectory.mkdirs() ) {
