@@ -37,6 +37,7 @@ import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
 import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
 import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
 import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
+import io.gomint.proxprox.network.protocol.PacketSetLocalPlayerAsInitialized;
 import io.gomint.proxprox.network.protocol.PacketStartGame;
 import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
@@ -238,7 +239,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         } );
     }
 
-    public void updateIncoming() {
+    void updateIncoming() {
         if ( ProxProx.instance.getConfig().isUseTCP() ) {
             return;
         }
@@ -314,6 +315,13 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         setChunkRadius.setChunkRadius( this.upstreamConnection.getViewDistance() );
                         send( setChunkRadius );
                     }
+                }
+
+                // Send local player init if needed
+                if ( this.upstreamConnection.isLocalPlayerInit() ) {
+                    PacketSetLocalPlayerAsInitialized packetSetLocalPlayerAsInitialized = new PacketSetLocalPlayerAsInitialized();
+                    packetSetLocalPlayerAsInitialized.setEntityId( this.upstreamConnection.getEntityRewriter().getOwnId() );
+                    send( packetSetLocalPlayerAsInitialized );
                 }
 
                 break;

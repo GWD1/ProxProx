@@ -75,6 +75,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private JSONObject skinData;
     @Getter
     private Debugger debugger;
+    @Getter
+    private boolean localPlayerInit;
 
     @Getter
     private EntityRewriter entityRewriter = new EntityRewriter();
@@ -349,6 +351,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
                 break;
 
+            case Protocol.PACKET_SET_LOCAL_PLAYER_INITIALIZED:
+                this.localPlayerInit = true;
+                if ( this.currentDownStream != null ) {
+                    this.currentDownStream.send( packetId, buffer );
+                }
+
+                break;
+
             default:
                 if ( this.currentDownStream != null ) {
                     buffer = this.entityRewriter.rewriteClientToServer( packetId, pos, buffer );
@@ -375,7 +385,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.pendingDownStream = new DownstreamConnection( this.proxProx, this, switchEvent.getTo().getIP(), switchEvent.getTo().getPort() );
     }
 
-    public void sendPlayState( PacketPlayState.PlayState state ) {
+    void sendPlayState( PacketPlayState.PlayState state ) {
         PacketPlayState packet = new PacketPlayState();
         packet.setState( state );
         this.send( packet );
@@ -469,7 +479,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         downstreamConnection.send( packetClientHandshake );
     }
 
-    public void move( float x, float y, float z, float yaw, float pitch ) {
+    void move( float x, float y, float z, float yaw, float pitch ) {
         PacketMovePlayer packet = new PacketMovePlayer();
         packet.setEntityId( this.entityRewriter.getOwnId() );
         packet.setX( x );
