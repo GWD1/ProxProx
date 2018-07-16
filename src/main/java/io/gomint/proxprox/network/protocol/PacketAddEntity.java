@@ -37,6 +37,7 @@ public class PacketAddEntity extends Packet {
     private float velocityZ;
     private float pitch;
     private float yaw;
+    private float headYaw;
 
     private List<Attribute> attributes = new ArrayList<>();
     private MetadataContainer metadataContainer;
@@ -62,6 +63,7 @@ public class PacketAddEntity extends Packet {
         buffer.writeLFloat( this.velocityZ );
         buffer.writeLFloat( this.pitch );
         buffer.writeLFloat( this.yaw );
+        buffer.writeLFloat( this.headYaw );
 
         buffer.writeUnsignedVarInt( this.attributes.size() );
         for ( Attribute attribute : this.attributes ) {
@@ -90,6 +92,7 @@ public class PacketAddEntity extends Packet {
         this.velocityZ = buffer.readLFloat();
         this.pitch = buffer.readLFloat();
         this.yaw = buffer.readLFloat();
+        this.headYaw = buffer.readFloat();
 
         int amountOfAttributes = buffer.readUnsignedVarInt();
         for ( int i = 0; i < amountOfAttributes; i++ ) {
