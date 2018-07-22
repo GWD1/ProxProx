@@ -43,8 +43,6 @@ public class MojangLoginForger {
         header.put( "alg", algorithm.getJwtName() );
         header.put( "x5u", publicKeyBase64 );
 
-        System.out.println( publicKeyBase64 );
-
         long timestamp = System.currentTimeMillis() / 1000;
 
         JSONObject claims = new JSONObject();
@@ -59,7 +57,7 @@ public class MojangLoginForger {
         extraData.put( "displayName", this.username );
         extraData.put( "identity", this.uuid.toString() );
         extraData.put( "proxprox.xuid", this.xuid );
-        extraData.put( "xuid", "" ); // Because dylan forgot to check for NULL, poor dylan
+        extraData.put( "XUID", "" ); // Because dylan forgot to check for NULL, poor dylan
 
         claims.put( "extraData", extraData );
         claims.put( "identityPublicKey", publicKeyBase64 );
