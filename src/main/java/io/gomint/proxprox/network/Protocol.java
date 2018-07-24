@@ -28,16 +28,12 @@ public class Protocol {
     public static final byte PACKET_PLAY_STATE = (byte) 0x02;
     public static final byte PACKET_ENCRYPTION_REQUEST = (byte) 0x03;
     public static final byte PACKET_ENCRYPTION_READY = (byte) 0x04;
+    public static final byte PACKET_DISCONNECT = (byte) 0x05;
     public static final byte PACKET_RESOURCEPACK_INFO = (byte) 0x06;
     public static final byte PACKET_RESOURCEPACK_STACK = (byte) 0x07;
     public static final byte PACKET_RESOURCEPACK_RESPONSE = (byte) 0x08;
     public static final byte PACKET_TEXT = (byte) 0x09;
     public static final byte PACKET_START_GAME = (byte) 0x0b;
-
-    /**
-     * Packet ID of the disconnect packet
-     */
-    public static final byte DISONNECT_PACKET = (byte) 0x05;
 
     /**
      * Packet ID of the batch packet

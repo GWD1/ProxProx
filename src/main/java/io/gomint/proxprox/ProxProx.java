@@ -23,6 +23,8 @@ import io.gomint.proxprox.scheduler.SyncTaskManager;
 import io.gomint.proxprox.util.Watchdog;
 import io.netty.util.ResourceLeakDetector;
 import lombok.Getter;
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

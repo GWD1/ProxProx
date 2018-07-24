@@ -26,11 +26,11 @@ public class PacketDisconnect extends Packet {
      * Constructor for implemented Packets
      */
     public PacketDisconnect() {
-        super( Protocol.DISONNECT_PACKET );
+        super( Protocol.PACKET_DISCONNECT );
     }
 
     public PacketDisconnect( String message ) {
-        super( Protocol.DISONNECT_PACKET );
+        super( Protocol.PACKET_DISCONNECT );
         this.message = message;
     }
 
