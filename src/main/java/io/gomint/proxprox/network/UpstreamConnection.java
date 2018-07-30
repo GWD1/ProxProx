@@ -604,11 +604,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @return true when connecting, false when no server was found
      */
     public boolean connectToLastKnown() {
-        if ( this.lastKnownServer != null ) {
+        /*if ( this.lastKnownServer != null ) {
             this.connect( this.lastKnownServer.getIP(), this.lastKnownServer.getPort() );
             this.lastKnownServer = null;
             return true;
-        }
+        }*/
 
         return false;
     }

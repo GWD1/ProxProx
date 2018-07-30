@@ -43,6 +43,7 @@ import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
 import io.gomint.proxprox.network.tcp.protocol.WrappedMCPEPacket;
+import io.gomint.proxprox.util.DumpUtil;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import lombok.EqualsAndHashCode;
@@ -233,6 +234,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                     EncapsulatedPacket newPacket = new EncapsulatedPacket();
                     newPacket.setPacketData( pureData );
                     return newPacket;
+                } else {
+                    LOGGER.warn( "GOT PACKET NOT BATCHED" );
+                    DumpUtil.dumpByteArray( data.getPacketData() );
                 }
 
                 return data;
@@ -241,7 +245,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     }
 
     void updateIncoming() {
-        if ( ProxProx.instance.getConfig().isUseTCP() ) {
+        if ( ProxProx.instance.getConfig().isUseTCP() || !this.getConnection().isConnected() ) {
             return;
         }
 
@@ -259,13 +263,19 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         if ( packetBuffers != null ) {
             for ( PacketBuffer buffer : packetBuffers ) {
-                // CHECKSTYLE:OFF
-                try {
-                    this.handlePacket( buffer );
-                } catch ( Exception e ) {
-                    LOGGER.error( "Error whilst processing packet: ", e );
+                while ( buffer.getRemaining() > 0 ) {
+                    int packetLength = buffer.readUnsignedVarInt();
+
+                    byte[] payData = new byte[packetLength];
+                    buffer.readBytes( payData );
+                    PacketBuffer pktBuf = new PacketBuffer( payData, 0 );
+                    this.handlePacket( pktBuf );
+
+                    if ( pktBuf.getRemaining() > 0 ) {
+                        LOGGER.debug( "Malformed batch packet payload: Could not read enclosed packet data correctly: 0x{} remaining {} bytes", Integer.toHexString( payData[0] ), pktBuf.getRemaining() );
+                        return;
+                    }
                 }
-                // CHECKSTYLE:ON
             }
         }
     }
@@ -280,7 +290,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         int pos = buffer.getPosition();
 
-        LOGGER.debug( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
+        // DumpUtil.dumpByteArray( buffer.getBuffer() );
+        // LOGGER.info( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
 
         // Minimalistic protocol
         switch ( packetId ) {
@@ -456,25 +467,39 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 break;
 
-            case Protocol.PACKET_RESOURCEPACK_INFO:
-                PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
-                packetResourcePacksInfo.deserialize( buffer );
-
-                // We don't support resources with proxy connections, simply answer that we have all
+            case Protocol.PACKET_RESOURCEPACK_STACK:
+                // I don't want any packs i just complete and gtfo
                 PacketResourcePackResponse resourcePackResponse = new PacketResourcePackResponse();
                 resourcePackResponse.setInfo( new HashMap<>() );
                 resourcePackResponse.setStatus( ResourceResponseStatus.COMPLETED );
                 this.send( resourcePackResponse );
+                break;
+
+            case Protocol.PACKET_RESOURCEPACK_INFO:
+                PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
+                packetResourcePacksInfo.deserialize( buffer );
+
+                if ( packetResourcePacksInfo.isMustAccept() ) {
+                    this.disconnect( "Server did send resource packs" );
+                    return;
+                }
+
+                // We don't support resources with proxy connections, simply answer that we have all
+                resourcePackResponse = new PacketResourcePackResponse();
+                resourcePackResponse.setInfo( new HashMap<>() );
+                resourcePackResponse.setStatus( ResourceResponseStatus.HAVE_ALL_PACKS );
+                this.send( resourcePackResponse );
 
                 break;
 
-            case Protocol.DISONNECT_PACKET:
+            case Protocol.PACKET_DISCONNECT:
                 PacketDisconnect packetDisconnect = new PacketDisconnect();
                 packetDisconnect.deserialize( buffer );
 
                 if ( this.equals( upstreamConnection.getDownStream() ) ) {
                     if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                        upstreamConnection.sendMessage( packetDisconnect.getMessage() );
+                        this.upstreamConnection.sendMessage( packetDisconnect.getMessage() );
+                        LOGGER.info( "Player {} got disconnected: {}", this.upstreamConnection.getUUID(), packetDisconnect.getMessage() );
                         return;
                     } else {
                         return;
