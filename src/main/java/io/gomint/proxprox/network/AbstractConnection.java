@@ -12,6 +12,12 @@ import io.gomint.jraknet.PacketReliability;
 import io.gomint.proxprox.ProxProx;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.protocol.PacketBatch;
+import io.gomint.server.jni.NativeCode;
+import io.gomint.server.jni.zlib.JavaZLib;
+import io.gomint.server.jni.zlib.NativeZLib;
+import io.gomint.server.jni.zlib.ZLib;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import lombok.Getter;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -22,6 +28,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.zip.DataFormatException;
 import java.util.zip.InflaterInputStream;
 
 /**
@@ -30,7 +37,13 @@ import java.util.zip.InflaterInputStream;
  */
 public abstract class AbstractConnection {
 
-    private static final Logger logger = LoggerFactory.getLogger( AbstractConnection.class );
+    private static final NativeCode<ZLib> ZLIB = new NativeCode<>( "zlib", JavaZLib.class, NativeZLib.class );
+    private static final Logger LOGGER = LoggerFactory.getLogger( AbstractConnection.class );
+
+    static {
+        // Load zlib native
+        ZLIB.load();
+    }
 
     @Getter
     protected ConnectionState state = ConnectionState.HANDSHAKE;
@@ -38,6 +51,12 @@ public abstract class AbstractConnection {
     protected EncryptionHandler encryptionHandler = null;
     @Getter
     protected PostProcessExecutor executor = null;
+    private ZLib decompressor;
+
+    protected void initDecompressor() {
+        this.decompressor = ZLIB.newInstance();
+        this.decompressor.init( false, 7 );
+    }
 
     /**
      * Setup the internal structures needed for the Connection
@@ -65,21 +84,25 @@ public abstract class AbstractConnection {
             }
         }
 
-        InflaterInputStream inflaterInputStream = new InflaterInputStream( new ByteArrayInputStream( input ) );
+        ByteBuf inBuf = PooledByteBufAllocator.DEFAULT.directBuffer( input.length );
+        inBuf.writeBytes( input );
 
-        ByteArrayOutputStream bout = new ByteArrayOutputStream( buffer.getRemaining() );
-        byte[] batchIntermediate = new byte[256];
+        ByteBuf outBuf = PooledByteBufAllocator.DEFAULT.directBuffer( 8192 ); // We will write at least once so ensureWrite will realloc to 8192 so or so
 
         try {
-            int read;
-            while ( ( read = inflaterInputStream.read( batchIntermediate ) ) > -1 ) {
-                bout.write( batchIntermediate, 0, read );
-            }
-        } catch ( IOException e ) {
+            this.decompressor.process( inBuf, outBuf );
+        } catch ( DataFormatException e ) {
+            LOGGER.error( "Failed to decompress batch packet", e );
+            outBuf.release();
             return null;
+        } finally {
+            inBuf.release();
         }
 
-        return bout.toByteArray();
+        byte[] data = new byte[outBuf.readableBytes()];
+        outBuf.readBytes( data );
+        outBuf.release();
+        return data;
     }
 
     /**

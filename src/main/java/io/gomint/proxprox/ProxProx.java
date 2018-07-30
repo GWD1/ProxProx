@@ -98,7 +98,6 @@ public class ProxProx implements Proxy {
         ProxProx.instance = this;
 
         LOGGER.info( "Starting ProxProx v1.0.0" );
-        Security.addProvider( new org.bouncycastle.jce.provider.BouncyCastleProvider() );
 
         System.setProperty( "java.net.preferIPv4Stack", "true" );               // We currently don't use ipv6
         System.setProperty( "io.netty.selectorAutoRebuildThreshold", "0" );     // Never rebuild selectors

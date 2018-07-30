@@ -162,6 +162,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 }
             } );
         } else {
+            this.initDecompressor();
             this.connection = new ClientSocket();
             this.connection.setMojangModificationEnabled( true );
             this.connection.setEventHandler( new SocketEventHandler() {

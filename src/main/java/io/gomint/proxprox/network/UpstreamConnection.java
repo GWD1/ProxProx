@@ -114,6 +114,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
     @Override
     protected void setup() {
+        this.initDecompressor();
         super.setup();
 
         // Create thread for reading data
