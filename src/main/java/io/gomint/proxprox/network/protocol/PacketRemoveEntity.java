@@ -11,7 +11,6 @@ import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
 import lombok.Data;
-import lombok.Getter;
 
 /**
  * @author geNAZt

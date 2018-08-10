@@ -73,10 +73,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private boolean valid;
     private String xboxId;
     private JSONObject skinData;
-    @Getter
-    private Debugger debugger;
-    @Getter
-    private boolean localPlayerInit;
+    @Getter private Debugger debugger;
+    @Getter private boolean localPlayerInit;
 
     @Getter
     private EntityRewriter entityRewriter = new EntityRewriter();
@@ -146,9 +144,28 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     @Override
     protected void handlePacket( PacketBuffer buffer ) {
         // Grab the packet ID from the packet's data
-        byte packetId = buffer.readByte();
-        if ( packetId != Protocol.PACKET_BATCH ) {
+        int rawId = buffer.readUnsignedVarInt();
+        byte packetId;
+
+        // Check for split id stuff
+        if ( this.connection.getProtocolVersion() == 8 ) {
+            packetId = (byte) rawId;
+
+            // There is some data behind the packet id when non batched packets (2 bytes)
+            if ( packetId == Protocol.PACKET_BATCH ) {
+                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
+            }
+
+            // TODO: Proper implement sending subclient and target subclient (two bytes)
             buffer.readShort();
+        } else {
+            // TODO: Find the new way of how the split ids are handled
+            packetId = (byte) rawId;
+
+            // There is some data behind the packet id when non batched packets (2 bytes)
+            if ( packetId == Protocol.PACKET_BATCH ) {
+                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
+            }
         }
 
         int pos = buffer.getPosition();
@@ -267,8 +284,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
                 LOGGER.info( "Logged in as {} (UUID: {}; GUID: {})", chainValidator.getUsername(), chainValidator.getUUID(), connection.getGuid() );
                 Thread.currentThread().setName( "UpStream " + getUUID() + " [Packet Read/Rewrite]" );
-                this.state = ConnectionState.CONNECTED;
 
+                this.state = ConnectionState.CONNECTED;
                 this.proxProx.addPlayer( this );
 
                 if ( this.proxProx.getConfig().isDisableEncryption() ) {
@@ -289,7 +306,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     if ( this.encryptionHandler.beginClientsideEncryption() ) {
                         // Forge a JWT
                         String encryptionRequestJWT = FORGER.forge( encryptionHandler.getServerPublic(), encryptionHandler.getServerPrivate(), encryptionHandler.getClientSalt() );
-                        LOGGER.debug( "Crafted JWT for client: {}", encryptionRequestJWT );
+                        LOGGER.info( "Crafted JWT for client: {}", encryptionRequestJWT );
 
                         PacketEncryptionRequest packetEncryptionRequest = new PacketEncryptionRequest();
                         packetEncryptionRequest.setJwt( encryptionRequestJWT );
@@ -499,15 +516,15 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      */
     public void send( Packet packet ) {
         PacketBuffer buffer = new PacketBuffer( 4 );
-        buffer.writeByte( packet.getId() );
 
         LOGGER.debug( "Sending packet {}", Integer.toHexString( packet.getId() & 0xFF ) );
 
         if ( packet.mustBeInBatch() ) {
-            buffer.writeShort( (short) 0 );
+            packet.serializeHeader( buffer, this.connection.getProtocolVersion() );
             packet.serialize( buffer );
             this.packetQueue.offer( buffer );
         } else {
+            buffer.writeByte( packet.getId() );
             packet.serialize( buffer );
             this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
         }
@@ -521,6 +538,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     public void disconnect( String reason ) {
         send( new PacketDisconnect( reason ) );
         this.disconnect = reason;
+        LOGGER.info( "Disconnected: {}", this.disconnect );
     }
 
     /**
@@ -604,11 +622,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      * @return true when connecting, false when no server was found
      */
     public boolean connectToLastKnown() {
-        /*if ( this.lastKnownServer != null ) {
+        if ( this.lastKnownServer != null ) {
             this.connect( this.lastKnownServer.getIP(), this.lastKnownServer.getPort() );
             this.lastKnownServer = null;
             return true;
-        }*/
+        }
 
         return false;
     }
@@ -656,7 +674,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         PacketBuffer packetBuffer = new PacketBuffer( data.length + 3 );
         packetBuffer.writeByte( packetId );
-        packetBuffer.writeShort( (short) 0 );
+
+        if ( this.connection.getProtocolVersion() == 8 ) {
+            packetBuffer.writeShort( (short) 0 );
+        }
+
         packetBuffer.writeBytes( data );
 
         this.packetQueue.offer( packetBuffer );

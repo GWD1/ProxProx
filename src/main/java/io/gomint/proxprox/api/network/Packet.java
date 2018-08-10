@@ -173,5 +173,13 @@ public abstract class Packet {
 		buffer.writeSignedVarInt( 0 );
 	}
 
+	public void serializeHeader( PacketBuffer buffer, byte protocolVersion ) {
+		if ( protocolVersion == 8 ) {
+			buffer.writeByte( this.id );
+			buffer.writeShort( (short) 0 );
+		} else {
+			buffer.writeUnsignedVarInt( this.id );
+		}
+	}
 
 }

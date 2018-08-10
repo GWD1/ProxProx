@@ -166,6 +166,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.initDecompressor();
             this.connection = new ClientSocket();
             this.connection.setMojangModificationEnabled( true );
+            this.connection.setProtocolVersion( this.upstreamConnection.getConnection().getProtocolVersion() );
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
@@ -283,9 +284,28 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     @Override
     protected void handlePacket( PacketBuffer buffer ) {
         // Grab the packet ID from the packet's data
-        byte packetId = buffer.readByte();
-        if ( packetId != Protocol.PACKET_BATCH ) {
+        int rawId = buffer.readUnsignedVarInt();
+        byte packetId;
+
+        // Check for split id stuff
+        if ( this.upstreamConnection.getConnection().getProtocolVersion() == 8 ) {
+            packetId = (byte) rawId;
+
+            // There is some data behind the packet id when non batched packets (2 bytes)
+            if ( packetId == Protocol.PACKET_BATCH ) {
+                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
+            }
+
+            // TODO: Proper implement sending subclient and target subclient (two bytes)
             buffer.readShort();
+        } else {
+            // TODO: Find the new way of how the split ids are handled
+            packetId = (byte) rawId;
+
+            // There is some data behind the packet id when non batched packets (2 bytes)
+            if ( packetId == Protocol.PACKET_BATCH ) {
+                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
+            }
         }
 
         int pos = buffer.getPosition();
@@ -621,10 +641,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     @Override
     public void send( Packet packet ) {
         PacketBuffer buffer = new PacketBuffer( 64 );
-        buffer.writeByte( packet.getId() );
 
         if ( !( packet instanceof PacketBatch ) ) {
-            buffer.writeShort( (short) 0 );
+            packet.serializeHeader( buffer, this.upstreamConnection.getConnection().getProtocolVersion() );
         }
 
         packet.serialize( buffer );
@@ -632,6 +651,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         // Do we send via TCP or UDP?
         if ( this.tcpConnection != null ) {
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
+            mcpePacket.setRaknetVersion( this.upstreamConnection.getConnection().getProtocolVersion() );
             mcpePacket.setBuffer( new PacketBuffer[]{ buffer } );
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
@@ -647,7 +667,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         if ( this.tcpConnection != null ) {
             PacketBuffer newBuffer = new PacketBuffer( 64 );
             newBuffer.writeByte( packetId );
-            newBuffer.writeShort( (short) 0 );
+
+            if ( this.upstreamConnection.getConnection().getProtocolVersion() == 8 ) {
+                newBuffer.writeShort( (short) 0 );
+            }
 
             byte[] data = new byte[buffer.getRemaining()];
             buffer.readBytes( data );
@@ -655,6 +678,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             newBuffer.writeBytes( data );
 
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
+            mcpePacket.setRaknetVersion( this.upstreamConnection.getConnection().getProtocolVersion() );
             mcpePacket.setBuffer( new PacketBuffer[]{ newBuffer } );
             this.tcpConnection.send( mcpePacket );
         } else {
@@ -663,7 +687,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             PacketBuffer packetBuffer = new PacketBuffer( 64 );
             packetBuffer.writeByte( packetId );
-            packetBuffer.writeShort( (short) 0 );
+
+            if ( this.upstreamConnection.getConnection().getProtocolVersion() == 8 ) {
+                packetBuffer.writeShort( (short) 0 );
+            }
+
             packetBuffer.writeBytes( data );
 
             this.executor.addWork( this, Collections.singletonList( packetBuffer ) );
