@@ -81,7 +81,7 @@ public class PostProcessWorker implements Runnable {
 
         EncryptionHandler encryptionHandler = this.connection.getEncryptionHandler();
         if ( encryptionHandler != null && this.connection.getState() == AbstractConnection.ConnectionState.ENCRYPTED ) {
-            batch.setPayload( encryptionHandler.encryptInputForClient( batch.getPayload() ) );
+            batch.setPayload( this.connection instanceof DownstreamConnection ? encryptionHandler.encryptInputForServer( batch.getPayload() ) : encryptionHandler.encryptInputForClient( batch.getPayload() ) );
         }
 
         this.connection.send( batch );
