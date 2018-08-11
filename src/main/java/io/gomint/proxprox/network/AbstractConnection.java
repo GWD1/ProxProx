@@ -55,7 +55,7 @@ public abstract class AbstractConnection {
 
     protected void initDecompressor() {
         this.decompressor = ZLIB.newInstance();
-        this.decompressor.init( false, 7 );
+        this.decompressor.init( false, false, 7 );
     }
 
     /**

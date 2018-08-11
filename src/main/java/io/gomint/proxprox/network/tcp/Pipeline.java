@@ -23,6 +23,8 @@ public class Pipeline {
     public static final String CONNECTION_HANDLER = "connectionHandler";
     public static final String PACKET_DECODER = "packetDecoder";
     public static final String PACKET_ENCODER = "packetEncoder";
+    public static final String PACKET_DECOMPRESSOR = "packetDecompressor";
+    public static final String PACKET_COMPRESSOR = "packetCompressor";
 
     public static EventLoopGroup newEventLoopGroup( int threads, ThreadFactory factory ) {
         return Epoll.isAvailable() ? new EpollEventLoopGroup( threads, factory ) : new NioEventLoopGroup( threads, factory );
@@ -38,8 +40,10 @@ public class Pipeline {
 
     public static void prepare( ChannelPipeline pipeline, ConnectionHandler connectionHandler ) {
         pipeline.addLast( FRAME_DECODER, new LengthFieldBasedFrameDecoder( Integer.MAX_VALUE, 0, 4, 0, 4 ) );
+        pipeline.addLast( PACKET_DECOMPRESSOR, new PacketDecompressor() );
         pipeline.addLast( PACKET_DECODER, new Decoder() );
         pipeline.addLast( FRAME_PREPENDER, new LengthFieldPrepender( 4 ) );
+        pipeline.addLast( PACKET_COMPRESSOR, new PacketCompressor() );
         pipeline.addLast( PACKET_ENCODER, new Encoder() );
         pipeline.addLast( CONNECTION_HANDLER, connectionHandler );
     }
