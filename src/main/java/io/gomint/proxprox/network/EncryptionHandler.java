@@ -7,6 +7,7 @@
 
 package io.gomint.proxprox.network;
 
+import io.gomint.proxprox.util.FastRandom;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -33,7 +34,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
-import java.security.SecureRandom;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
@@ -51,8 +51,9 @@ import java.util.concurrent.atomic.AtomicLong;
 public class EncryptionHandler {
 
     private static final ThreadLocal<MessageDigest> SHA256_DIGEST = new ThreadLocal<>();
-    private static KeyFactory ECDH_KEY_FACTORY;
+    private static final Logger LOGGER = LoggerFactory.getLogger( EncryptionHandler.class );
     public static KeyPair PROXY_KEY_PAIR;
+    private static KeyFactory ECDH_KEY_FACTORY;
 
     static {
         // Initialize KeyFactory:
@@ -66,6 +67,26 @@ public class EncryptionHandler {
 
         generateEncryptionKeys();
     }
+
+    // Packet counters
+    private AtomicLong sendingCounter = new AtomicLong( 0 );
+    private AtomicLong receiveCounter = new AtomicLong( 0 );
+    // Client Side:
+    private ECPublicKey clientPublicKey;
+    private Cipher clientEncryptor;
+    private Cipher clientDecryptor;
+    // Data for packet and checksum calculations
+    @Getter
+    @Setter
+    private byte[] clientSalt;
+    private byte[] key;
+    // Server side
+    private ECPublicKey serverPublicKey;
+    private Cipher serverEncryptor;
+    private Cipher serverDecryptor;
+    private AtomicLong serverSendCounter = new AtomicLong( 0 );
+    private AtomicLong serverReceiveCounter = new AtomicLong( 0 );
+    private byte[] serverKey;
 
     public static ECPublicKey createPublicKey( String base64 ) {
         try {
@@ -96,31 +117,6 @@ public class EncryptionHandler {
         // Generate the keypair:
         PROXY_KEY_PAIR = generator.generateKeyPair();
     }
-
-    private static final Logger LOGGER = LoggerFactory.getLogger( EncryptionHandler.class );
-
-    // Packet counters
-    private AtomicLong sendingCounter = new AtomicLong( 0 );
-    private AtomicLong receiveCounter = new AtomicLong( 0 );
-
-    // Client Side:
-    private ECPublicKey clientPublicKey;
-    private Cipher clientEncryptor;
-    private Cipher clientDecryptor;
-
-    // Data for packet and checksum calculations
-    @Getter
-    @Setter
-    private byte[] clientSalt;
-    private byte[] key;
-
-    // Server side
-    private ECPublicKey serverPublicKey;
-    private Cipher serverEncryptor;
-    private Cipher serverDecryptor;
-    private AtomicLong serverSendCounter = new AtomicLong( 0 );
-    private AtomicLong serverReceiveCounter = new AtomicLong( 0 );
-    private byte[] serverKey;
 
     /**
      * Supplies the needed public key of the login to create the right encryption pairs
@@ -215,8 +211,8 @@ public class EncryptionHandler {
         }
 
         // Generate a random salt:
-        SecureRandom secureRandom = new SecureRandom();
-        this.clientSalt = secureRandom.generateSeed( 16 );
+        this.clientSalt = new byte[16];
+        FastRandom.current().nextBytes( this.clientSalt );
 
         // Generate shared secret from ECDH keys:
         byte[] secret = this.generateECDHSecret( PROXY_KEY_PAIR.getPrivate(), this.clientPublicKey );
