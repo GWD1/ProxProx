@@ -170,7 +170,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
+                    // LOGGER.info( "Got socketEvent: " + socketEvent.getType().name() );
                     switch ( socketEvent.getType() ) {
                         case CONNECTION_ATTEMPT_SUCCEEDED:
                             // We got accepted *yay*
@@ -644,6 +644,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         if ( !( packet instanceof PacketBatch ) ) {
             packet.serializeHeader( buffer, this.upstreamConnection.getConnection().getProtocolVersion() );
+        } else {
+            buffer.writeByte( packet.getId() );
         }
 
         packet.serialize( buffer );

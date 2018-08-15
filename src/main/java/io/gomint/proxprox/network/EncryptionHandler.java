@@ -350,11 +350,11 @@ public class EncryptionHandler {
 
     private byte[] generateECDHSecret( PrivateKey privateKey, PublicKey publicKey ) {
         try {
-            KeyAgreement ka = KeyAgreement.getInstance( "ECDH", "BC" );
+            KeyAgreement ka = KeyAgreement.getInstance( "ECDH" );
             ka.init( privateKey );
             ka.doPhase( publicKey, true );
             return ka.generateSecret();
-        } catch ( NoSuchAlgorithmException | InvalidKeyException | NoSuchProviderException e ) {
+        } catch ( NoSuchAlgorithmException | InvalidKeyException e ) {
             LOGGER.error( "Failed to generate Elliptic-Curve-Diffie-Hellman Shared Secret for clientside encryption", e );
             return null;
         }
