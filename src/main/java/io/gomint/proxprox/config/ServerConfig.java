@@ -1,28 +1,16 @@
-/*
- * Copyright (c) 2016, GoMint, BlackyPaw and geNAZt
- *
- * This code is licensed under the BSD license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 package io.gomint.proxprox.config;
 
-import com.blackypaw.simpleconfig.SimpleConfig;
+import io.gomint.proxprox.api.config.YamlConfig;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/**
- * @author geNAZt
- * @version 1.0
- */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ServerConfig extends SimpleConfig {
+public class ServerConfig extends YamlConfig {
 
-    private String ip;
-    private int port;
+    private String ip = "127.0.0.1";
+    private int port = 19134;
 
 }
