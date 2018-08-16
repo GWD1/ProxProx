@@ -23,8 +23,25 @@ import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.debug.Debugger;
 import io.gomint.proxprox.inventory.ItemStack;
-import io.gomint.proxprox.jwt.*;
-import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.jwt.EncryptionRequestForger;
+import io.gomint.proxprox.jwt.JwtAlgorithm;
+import io.gomint.proxprox.jwt.JwtSignatureException;
+import io.gomint.proxprox.jwt.JwtToken;
+import io.gomint.proxprox.jwt.MojangChainValidator;
+import io.gomint.proxprox.jwt.MojangLoginForger;
+import io.gomint.proxprox.network.protocol.PacketDisconnect;
+import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
+import io.gomint.proxprox.network.protocol.PacketLogin;
+import io.gomint.proxprox.network.protocol.PacketMobEffect;
+import io.gomint.proxprox.network.protocol.PacketMobEquipment;
+import io.gomint.proxprox.network.protocol.PacketMovePlayer;
+import io.gomint.proxprox.network.protocol.PacketPlayState;
+import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
+import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
+import io.gomint.proxprox.network.protocol.PacketResourcePackStack;
+import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
+import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
+import io.gomint.proxprox.network.protocol.PacketText;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
 import io.gomint.proxprox.util.EffectManager;
@@ -41,7 +58,11 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -73,8 +94,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private boolean valid;
     private String xboxId;
     private JSONObject skinData;
-    @Getter private Debugger debugger;
-    @Getter private boolean localPlayerInit;
+    @Getter
+    private Debugger debugger;
+    @Getter
+    private boolean localPlayerInit;
 
     @Getter
     private EntityRewriter entityRewriter = new EntityRewriter();
@@ -395,7 +418,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Check if we have a pending connection
         if ( this.pendingDownStream != null ) {
             // Disconnect
-            this.pendingDownStream.close( false );
+            this.pendingDownStream.close( false, "Aborting login" );
             this.pendingDownStream = null;
         }
 
@@ -450,7 +473,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Close old connection and store new one
         if ( this.currentDownStream != null ) {
             this.lastKnownServer = new ServerDataHolder( this.currentDownStream.getIP(), this.currentDownStream.getPort() );
-            this.currentDownStream.close( false );
+            this.currentDownStream.close( false, "Transfer to new server" );
 
             // Cleanup all entities
             for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
@@ -668,6 +691,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         this.pendingDownStream = null;
     }
 
+    public void resetCurrentDownStream() {
+        this.currentDownStream = null;
+    }
+
     public void send( byte packetId, PacketBuffer buffer ) {
         byte[] data = new byte[buffer.getRemaining()];
         buffer.readBytes( data );
@@ -691,11 +718,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     public void updateIncoming() {
         // Update downstream first
         if ( this.currentDownStream != null ) {
-            this.currentDownStream.updateIncoming();
+            this.currentDownStream.updateIncoming( this.currentDownStream.getConnection() );
         }
 
         if ( this.pendingDownStream != null ) {
-            this.pendingDownStream.updateIncoming();
+            this.pendingDownStream.updateIncoming( this.pendingDownStream.getConnection() );
         }
 
         // It seems that movement is sent last, but we need it first to check if player position of other packets align
@@ -761,10 +788,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             pingPacket.setPing( (int) this.connection.getPing() );
             this.currentDownStream.getTcpConnection().send( pingPacket );
         }
-    }
-
-    public void resetDownStream() {
-        this.currentDownStream = null;
     }
 
     public void flushSendQueue() {

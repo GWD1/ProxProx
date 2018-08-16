@@ -97,7 +97,7 @@ public class SocketEventListener implements SocketEventHandler {
 
                         if ( upstreamConnection.getDownStream() != null ) {
                             upstreamConnection.getDownStream().disconnect( socketEvent.getReason() );
-                            upstreamConnection.resetDownStream();
+                            upstreamConnection.resetCurrentDownStream();
                         }
 
                         upstreamConnection.close();

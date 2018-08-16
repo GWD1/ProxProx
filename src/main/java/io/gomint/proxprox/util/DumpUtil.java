@@ -88,7 +88,7 @@ public class DumpUtil {
             }
         }
 
-        System.out.println( stringBuilder );
+        LOGGER.info( String.valueOf( stringBuilder ) );
     }
 
 }

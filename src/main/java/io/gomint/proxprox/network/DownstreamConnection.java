@@ -133,7 +133,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                             if ( upstreamConnection.isConnected() ) {
                                 LOGGER.info( "Disconnected downstream..." );
                                 if ( !DownstreamConnection.this.manualClose ) {
-                                    DownstreamConnection.this.close( true );
+                                    DownstreamConnection.this.close( true, "Server disconnected" );
 
                                     // Check if we need to disconnect upstream
                                     if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
@@ -182,7 +182,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                         case CONNECTION_DISCONNECTED:
                             LOGGER.info( "Disconnected downstream..." );
                             if ( !DownstreamConnection.this.manualClose ) {
-                                DownstreamConnection.this.close( true );
+                                DownstreamConnection.this.updateIncoming( socketEvent.getConnection() );
+                                DownstreamConnection.this.close( true, "Raknet disconnected" );
 
                                 // Check if we need to disconnect upstream
                                 if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
@@ -245,8 +246,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         } );
     }
 
-    void updateIncoming() {
-        if ( ProxProx.instance.getConfig().isUseTCP() || !this.getConnection().isConnected() ) {
+    void updateIncoming( Connection connection ) {
+        if ( ProxProx.instance.getConfig().isUseTCP() || connection == null ) {
             return;
         }
 
@@ -254,7 +255,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         List<PacketBuffer> packetBuffers = null;
 
         EncapsulatedPacket packetData;
-        while ( ( packetData = this.getConnection().receive() ) != null ) {
+        while ( ( packetData = connection.receive() ) != null ) {
             if ( packetBuffers == null ) {
                 packetBuffers = new ArrayList<>();
             }
@@ -516,17 +517,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 PacketDisconnect packetDisconnect = new PacketDisconnect();
                 packetDisconnect.deserialize( buffer );
 
-                if ( this.equals( upstreamConnection.getDownStream() ) ) {
-                    if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                        this.upstreamConnection.sendMessage( packetDisconnect.getMessage() );
-                        LOGGER.info( "Player {} got disconnected: {}", this.upstreamConnection.getUUID(), packetDisconnect.getMessage() );
-                        return;
-                    } else {
-                        return;
-                    }
-                } else {
-                    upstreamConnection.resetPendingDownStream();
-                }
+                this.close( true, packetDisconnect.getMessage() );
 
                 break;
 
@@ -565,36 +556,33 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     /**
      * Close the connection to the underlying RakNet Server
      */
-    void close( boolean fireEvent ) {
+    void close( boolean fireEvent, String message ) {
         this.manualClose = true;
 
-        LOGGER.info( "Player {} disconnected from server {}", this.upstreamConnection, this );
+        LOGGER.info( "Player {} disconnected from server {}: {}", this.upstreamConnection, this, message );
 
         if ( ( this.tcpConnection != null || this.connection != null ) && fireEvent ) {
             ServerKickedPlayerEvent serverKickedPlayerEvent = new ServerKickedPlayerEvent( this.upstreamConnection, this );
             ProxProx.instance.getPluginManager().callEvent( serverKickedPlayerEvent );
         }
 
-        if ( this.tcpConnection != null ) {
-            this.tcpConnection.disconnect();
-            this.tcpConnection = null;
-        }
-
-        if ( this.connection != null ) {
-            this.connection.close();
-            this.connection = null;
-        }
-
-        super.close();
+        this.internalClose( message );
     }
 
     public void disconnect( String reason ) {
         LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
 
         if ( this.connection != null && this.connection.getConnection() != null ) {
-            LOGGER.info( "Disconnecting DownStream for " + this.upstreamConnection.getUUID() );
-
             this.connection.getConnection().disconnect( reason );
+        }
+
+        this.internalClose( reason );
+    }
+
+    private void internalClose( String message ) {
+        if ( this.tcpConnection != null ) {
+            this.tcpConnection.disconnect();
+            this.tcpConnection = null;
         }
 
         if ( this.connection != null ) {
@@ -602,12 +590,20 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection = null;
         }
 
-        if ( this.tcpConnection != null ) {
-            this.tcpConnection.disconnect();
-            this.tcpConnection = null;
-        }
-
         super.close();
+
+
+        if ( !this.manualClose ) {
+            if ( this.equals( this.upstreamConnection.getDownStream() ) ) {
+                this.upstreamConnection.resetCurrentDownStream();
+
+                if ( this.upstreamConnection.getPendingDownStream() != null || this.upstreamConnection.connectToLastKnown() ) {
+                    this.upstreamConnection.sendMessage( message );
+                }
+            } else {
+                this.upstreamConnection.resetPendingDownStream();
+            }
+        }
     }
 
     @Override
@@ -626,7 +622,11 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
      * @return The connection to the server
      */
     public Connection getConnection() {
-        return connection.getConnection();
+        if ( this.connection == null ) {
+            return null;
+        }
+
+        return this.connection.getConnection();
     }
 
     /**
