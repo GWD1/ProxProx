@@ -130,6 +130,8 @@
                                         implementation="com.github.edwgiz.mavenShadePlugin.log4j2CacheTransformer.PluginsCacheFileTransformer">
                                 </transformer>
                             </transformers>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
                         </configuration>
                     </execution>
                 </executions>

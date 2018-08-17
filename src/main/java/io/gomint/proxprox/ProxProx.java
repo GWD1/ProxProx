@@ -131,7 +131,7 @@ public class ProxProx implements Proxy {
         this.config = new ProxyConfig();
 
         try {
-            this.config.init( new File( "config.cfg" ) );
+            this.config.init( new File( "config.yml" ) );
         } catch ( InvalidConfigurationException e ) {
             LOGGER.error( "Could not init config.cfg. Please check for corruption.", e );
             System.exit( -1 );
