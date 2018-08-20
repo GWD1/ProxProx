@@ -21,6 +21,7 @@ public class PacketStartGame extends Packet {
     private float spawnPitch;
 
     private int gamemode;
+    private int worldGamemode;
     private int difficulty;
 
     public PacketStartGame() {
@@ -38,7 +39,6 @@ public class PacketStartGame extends Packet {
         buffer.readSignedVarLong();
         this.runtimeEntityId = buffer.readUnsignedVarLong();
 
-        // ignore gamemode
         this.gamemode = buffer.readSignedVarInt();
 
         this.spawnX = buffer.readLFloat();
@@ -50,8 +50,8 @@ public class PacketStartGame extends Packet {
         buffer.readSignedVarInt();
         buffer.readSignedVarInt();
         buffer.readSignedVarInt();
-        buffer.readSignedVarInt();
 
+        this.worldGamemode = buffer.readSignedVarInt();
         this.difficulty = buffer.readSignedVarInt();
     }
 
