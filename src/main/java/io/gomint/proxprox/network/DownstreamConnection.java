@@ -101,6 +101,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     private float spawnYaw;
     @Getter
     private float spawnPitch;
+    @Getter
+    private int gamemode;
+    @Getter
+    private int worldGamemode;
 
     /**
      * Create a new AbstractConnection to a server.
@@ -329,11 +333,13 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 }
 
                 this.upstreamConnection.getEntityRewriter().setCurrentDownStreamId( startGame.getRuntimeEntityId() );
+                this.gamemode = startGame.getGamemode();
                 this.spawnX = startGame.getSpawnX();
                 this.spawnY = startGame.getSpawnY();
                 this.spawnZ = startGame.getSpawnZ();
                 this.spawnYaw = startGame.getSpawnYaw();
                 this.spawnPitch = startGame.getSpawnPitch();
+                this.worldGamemode = 0;
 
                 if ( this.upstreamConnection.isFirstServer() ) {
                     buffer.setPosition( pos );
@@ -341,6 +347,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 } else {
                     this.upstreamConnection.move( this.getSpawnX(), this.getSpawnY(), this.getSpawnZ(),
                             this.getSpawnYaw(), this.getSpawnPitch() );
+
+                    this.upstreamConnection.setGameMode( this.gamemode );
 
                     // Send chunk radius
                     if ( this.upstreamConnection.getViewDistance() > 0 ) {

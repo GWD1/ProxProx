@@ -1,34 +1,22 @@
-/*
- * Copyright (c) 2016, GoMint, BlackyPaw and geNAZt
- *
- * This code is licensed under the BSD license found in the
- * LICENSE file in the root directory of this source tree.
- */
-
 package io.gomint.proxprox.config;
 
-import com.blackypaw.simpleconfig.SimpleConfig;
-import com.blackypaw.simpleconfig.annotation.Comment;
+import io.gomint.proxprox.api.config.Comment;
+import io.gomint.proxprox.api.config.YamlConfig;
 import lombok.Data;
 
-/**
- * @author geNAZt
- * @version 1.0
- */
 @Data
-public class ProxyConfig extends SimpleConfig {
+public class ProxyConfig extends YamlConfig {
 
-    @Comment( "The host and port to bind the server to" )
     private String ip = "0.0.0.0";
     private int port = 19132;
 
-    @Comment( "The maximum number of players to play on this proxy" )
+    private ServerConfig defaultServer = new ServerConfig();
+
+    @Comment("Motd of this server")
+    private String motd = "§aProxProx §7Development Build";
+
+    @Comment( "The maximum number of players to play on this server" )
     private int maxPlayers = 100;
-
-    @Comment( "Motd of this proxy" )
-    private String motd = "§6ProxProx §7Development Build";
-
-    private ServerConfig defaultServer = new ServerConfig( "127.0.0.1", 19134 );
 
     // If onlineMode = true the Proxy kicks players which don't have a xbox payload in their login or the login
     // in general is not valid (certification issues)

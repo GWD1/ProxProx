@@ -520,6 +520,12 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         downstreamConnection.send( packetClientHandshake );
     }
 
+    void setGameMode( int gamemode ) {
+        PacketSetGamemode packet = new PacketSetGamemode();
+        packet.setGameMode( gamemode );
+        send( packet );
+    }
+
     void move( float x, float y, float z, float yaw, float pitch ) {
         PacketMovePlayer packet = new PacketMovePlayer();
         packet.setEntityId( this.entityRewriter.getOwnId() );

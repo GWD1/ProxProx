@@ -10,6 +10,7 @@ package io.gomint.proxprox;
 import io.gomint.jraknet.ServerSocket;
 import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
+import io.gomint.proxprox.api.config.InvalidConfigurationException;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.event.PlayerQuitEvent;
 import io.gomint.proxprox.commands.Commandend;
@@ -23,8 +24,6 @@ import io.gomint.proxprox.scheduler.SyncTaskManager;
 import io.gomint.proxprox.util.Watchdog;
 import io.netty.util.ResourceLeakDetector;
 import lombok.Getter;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.core.config.Configurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.SocketException;
-import java.security.Security;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
@@ -133,8 +131,8 @@ public class ProxProx implements Proxy {
         this.config = new ProxyConfig();
 
         try {
-            this.config.initialize( new File( "config.cfg" ) );
-        } catch ( IOException e ) {
+            this.config.init( new File( "config.yml" ) );
+        } catch ( InvalidConfigurationException e ) {
             LOGGER.error( "Could not init config.cfg. Please check for corruption.", e );
             System.exit( -1 );
         }

@@ -13,12 +13,6 @@
             <id>gomint-repo</id>
             <url>https://repo.gomint.io/content/groups/public/</url>
         </repository>
-
-        <repository>
-            <id>blackypaw-repo</id>
-            <name>SimpleConfig repository</name>
-            <url>http://repo.blackypaw.com/content/groups/public/</url>
-        </repository>
     </repositories>
     
     <dependencies>
@@ -63,9 +57,9 @@
 
         <!-- Config -->
         <dependency>
-            <groupId>com.blackypaw</groupId>
-            <artifactId>simpleconfig</artifactId>
-            <version>1.1.0</version>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.20</version>
         </dependency>
 
         <!-- Guava -->
@@ -136,6 +130,8 @@
                                         implementation="com.github.edwgiz.mavenShadePlugin.log4j2CacheTransformer.PluginsCacheFileTransformer">
                                 </transformer>
                             </transformers>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
                         </configuration>
                     </execution>
                 </executions>
