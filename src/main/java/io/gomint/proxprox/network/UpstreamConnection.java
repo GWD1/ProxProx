@@ -41,6 +41,7 @@ import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
 import io.gomint.proxprox.network.protocol.PacketResourcePackStack;
 import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
 import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
+import io.gomint.proxprox.network.protocol.PacketSetGamemode;
 import io.gomint.proxprox.network.protocol.PacketText;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
