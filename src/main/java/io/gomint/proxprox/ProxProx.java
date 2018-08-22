@@ -7,6 +7,9 @@
 
 package io.gomint.proxprox;
 
+import com.google.common.util.concurrent.ListeningScheduledExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
+import io.gomint.jraknet.EventLoops;
 import io.gomint.jraknet.ServerSocket;
 import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
@@ -63,7 +66,7 @@ public class ProxProx implements Proxy {
 
     // Task scheduling
     @Getter
-    private ExecutorService executorService;
+    private ListeningScheduledExecutorService executorService;
     @Getter
     private SyncTaskManager syncTaskManager;
     @Getter
@@ -106,19 +109,8 @@ public class ProxProx implements Proxy {
         // ------------------------------------ //
         // Executor Initialization
         // ------------------------------------ //
-        ThreadFactory threadFactory = new ThreadFactory() {
-            private AtomicLong counter = new AtomicLong( 0 );
-
-            @Override
-            public Thread newThread( Runnable r ) {
-                Thread thread = Executors.defaultThreadFactory().newThread( r );
-                thread.setName( "ProxProx Thread #" + counter.getAndIncrement() );
-                return thread;
-            }
-        };
-
-        this.executorService = new ThreadPoolExecutor( 0, 512, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(), threadFactory );
-        this.processExecutorService = new PostProcessExecutorService();
+        this.executorService = MoreExecutors.listeningDecorator( EventLoops.LOOP_GROUP );
+        this.processExecutorService = new PostProcessExecutorService( this.executorService );
 
         // Build up watchdog
         this.watchdog = new Watchdog( this.executorService, this.running );

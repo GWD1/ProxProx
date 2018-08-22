@@ -11,6 +11,8 @@ import io.gomint.proxprox.api.scheduler.Scheduler;
 import lombok.RequiredArgsConstructor;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -20,7 +22,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class CoreScheduler implements Scheduler {
 
-    private final ExecutorService executorService;
+    private final ScheduledExecutorService executorService;
     private final SyncTaskManager syncTaskManager;
 
     @Override
@@ -35,8 +37,18 @@ public class CoreScheduler implements Scheduler {
 
     @Override
     public AbstractTask scheduleAsync( Runnable runnable, long delay, long period, TimeUnit timeUnit ) {
-        AsyncScheduledTask task = new AsyncScheduledTask( runnable, delay, period, timeUnit );
-        executorService.execute( task );
+        AsyncScheduledTask task = new AsyncScheduledTask( runnable );
+
+        Future<?> future;
+        if ( period > 0 ) {
+            future = this.executorService.scheduleAtFixedRate( task, delay, period, timeUnit );
+        } else if ( delay > 0 ) {
+            future = this.executorService.schedule( task, delay, timeUnit );
+        } else {
+            future = this.executorService.submit( task );
+        }
+
+        task.setFuture( future );
         return task;
     }
 

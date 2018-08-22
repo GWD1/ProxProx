@@ -303,7 +303,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 }
 
                 LOGGER.info( "Logged in as {} (UUID: {}; GUID: {})", chainValidator.getUsername(), chainValidator.getUUID(), connection.getGuid() );
-                Thread.currentThread().setName( "UpStream " + getUUID() + " [Packet Read/Rewrite]" );
 
                 this.state = ConnectionState.CONNECTED;
                 this.proxProx.addPlayer( this );
