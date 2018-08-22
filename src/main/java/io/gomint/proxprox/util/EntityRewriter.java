@@ -62,6 +62,7 @@ public class EntityRewriter {
                     buffer = new PacketBuffer( data.length );
                     buffer.writeSignedVarLong( replacementID );
                     buffer.writeBytes( data );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
@@ -87,6 +88,7 @@ public class EntityRewriter {
                     buffer = new PacketBuffer( 8 );
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
@@ -108,6 +110,7 @@ public class EntityRewriter {
                     buffer.writeSignedVarInt( actionId );
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
@@ -124,6 +127,7 @@ public class EntityRewriter {
                 buffer = new PacketBuffer( 8 );
                 buffer.writeUnsignedVarLong( replaceItemId );
                 buffer.writeUnsignedVarLong( replacePlayerId );
+                buffer.shrink();
                 buffer.resetPosition();
 
                 break;
@@ -144,6 +148,7 @@ public class EntityRewriter {
                 buffer.writeUnsignedVarInt( d );
                 buffer.writeUnsignedVarInt( e );
                 buffer.writeLLong( replacementID );
+                buffer.shrink();
                 buffer.resetPosition();
 
                 break;
@@ -199,6 +204,7 @@ public class EntityRewriter {
                     buffer = new PacketBuffer( data.length );
                     buffer.writeSignedVarLong( replacementID );
                     buffer.writeBytes( data );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
@@ -222,6 +228,7 @@ public class EntityRewriter {
                     buffer = new PacketBuffer( data.length );
                     buffer.writeUnsignedVarLong( replacementID );
                     buffer.writeBytes( data );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
@@ -238,6 +245,7 @@ public class EntityRewriter {
                     buffer = new PacketBuffer( 6 );
                     buffer.writeSignedVarInt( actionId );
                     buffer.writeUnsignedVarLong( replacementID );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );
@@ -261,6 +269,7 @@ public class EntityRewriter {
                         buffer.writeByte( action );
                         buffer.writeUnsignedVarLong( replacementID );
                         buffer.writeBytes( data );
+                        buffer.shrink();
                         buffer.resetPosition();
                     } else {
                         buffer.setPosition( pos );
@@ -281,6 +290,7 @@ public class EntityRewriter {
                     inventoryTransaction.setEntityId( getReplacementIdForServer( entityId ) );
                     buffer = new PacketBuffer( 8 );
                     inventoryTransaction.serialize( buffer );
+                    buffer.shrink();
                     buffer.resetPosition();
                 } else {
                     buffer.setPosition( pos );

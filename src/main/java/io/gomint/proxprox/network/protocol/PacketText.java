@@ -34,14 +34,6 @@ public class PacketText extends Packet {
         super( Protocol.PACKET_TEXT );
     }
 
-    public String getSubtitle() {
-        return this.sender;
-    }
-
-    public void setSubtitle( String subtitle ) {
-        this.sender = subtitle;
-    }
-
     @Override
     public void serialize( PacketBuffer buffer ) {
         buffer.writeByte( this.type.getId() );
@@ -86,11 +78,6 @@ public class PacketText extends Packet {
         this.type = Type.getById( buffer.readByte() );
         buffer.readBoolean();
         switch ( this.type ) {
-            case POPUP_NOTICE:
-                this.message = buffer.readString();
-                this.sender = buffer.readString();
-                break;
-
             case PLAYER_CHAT:
             case WHISPER:
             case ANNOUNCEMENT:
@@ -103,10 +90,12 @@ public class PacketText extends Packet {
                 this.message = buffer.readString();
                 break;
 
+            case POPUP_NOTICE:
             case JUKEBOX_POPUP:
             case LOCALIZABLE_MESSAGE:
                 this.message = buffer.readString();
                 byte count = buffer.readByte();
+
                 this.arguments = new String[count];
                 for ( byte i = 0; i < count; ++i ) {
                     this.arguments[i] = buffer.readString();
