@@ -8,6 +8,12 @@
 package io.gomint.proxprox.network;
 
 import io.gomint.proxprox.util.FastRandom;
+import io.gomint.server.jni.NativeCode;
+import io.gomint.server.jni.hash.Hash;
+import io.gomint.server.jni.hash.JavaHash;
+import io.gomint.server.jni.hash.NativeHash;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
 import lombok.Getter;
 import lombok.Setter;
 import org.slf4j.Logger;
@@ -20,24 +26,18 @@ import javax.crypto.SecretKey;
 import javax.crypto.ShortBufferException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.security.DigestException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -50,8 +50,14 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class EncryptionHandler {
 
-    private static final ThreadLocal<MessageDigest> SHA256_DIGEST = new ThreadLocal<>();
+    private static final NativeCode<Hash> HASHING = new NativeCode<>( "hash", JavaHash.class, NativeHash.class );
     private static final Logger LOGGER = LoggerFactory.getLogger( EncryptionHandler.class );
+    private static final ThreadLocal<Hash> SHA256_DIGEST = new ThreadLocal<>();
+
+    static {
+        HASHING.load();
+    }
+
     public static KeyPair PROXY_KEY_PAIR;
     private static KeyFactory ECDH_KEY_FACTORY;
 
@@ -71,15 +77,18 @@ public class EncryptionHandler {
     // Packet counters
     private AtomicLong sendingCounter = new AtomicLong( 0 );
     private AtomicLong receiveCounter = new AtomicLong( 0 );
+
     // Client Side:
     private ECPublicKey clientPublicKey;
     private Cipher clientEncryptor;
     private Cipher clientDecryptor;
+
     // Data for packet and checksum calculations
     @Getter
     @Setter
     private byte[] clientSalt;
     private byte[] key;
+
     // Server side
     private ECPublicKey serverPublicKey;
     private Cipher serverEncryptor;
@@ -191,7 +200,7 @@ public class EncryptionHandler {
 
     public byte[] encryptInputForServer( byte[] input ) {
         byte[] hashBytes = calcHash( input, this.serverKey, this.serverSendCounter );
-        byte[] finalInput = new byte[hashBytes.length + input.length];
+        byte[] finalInput = new byte[8 + input.length];
 
         System.arraycopy( input, 0, finalInput, 0, input.length );
         System.arraycopy( hashBytes, 0, finalInput, input.length, 8 );
@@ -264,7 +273,7 @@ public class EncryptionHandler {
      */
     public byte[] encryptInputForClient( byte[] input ) {
         byte[] hashBytes = calcHash( input, this.key, this.sendingCounter );
-        byte[] finalInput = new byte[hashBytes.length + input.length];
+        byte[] finalInput = new byte[8 + input.length];
 
         System.arraycopy( input, 0, finalInput, 0, input.length );
         System.arraycopy( hashBytes, 0, finalInput, input.length, 8 );
@@ -291,42 +300,31 @@ public class EncryptionHandler {
         return PROXY_KEY_PAIR.getPrivate();
     }
 
-    private MessageDigest getSHA256() {
-        MessageDigest digest = SHA256_DIGEST.get();
+    private Hash getSHA256() {
+        Hash digest = SHA256_DIGEST.get();
         if ( digest != null ) {
             digest.reset();
             return digest;
         }
 
-        try {
-            digest = MessageDigest.getInstance( "SHA-256" );
-            SHA256_DIGEST.set( digest );
-            return digest;
-        } catch ( NoSuchAlgorithmException e ) {
-            LOGGER.error( "Could not create SHA256 digest" );
-        }
-
-        return null;
+        digest = HASHING.newInstance();
+        SHA256_DIGEST.set( digest );
+        return digest;
     }
 
     private byte[] calcHash( byte[] input, byte[] key, AtomicLong counter ) {
-        try {
-            MessageDigest digest = getSHA256();
-            if ( digest == null ) {
-                return new byte[8];
-            }
-
-            byte[] result = new byte[digest.getDigestLength()];
-            digest.update( ByteBuffer.allocate( 8 ).order( ByteOrder.LITTLE_ENDIAN ).putLong( counter.getAndIncrement() ).array(), 0, 8 );
-            digest.update( input, 0, input.length );
-            digest.update( key, 0, key.length );
-            digest.digest( result, 0, result.length );
-            return Arrays.copyOf( result, 8 );
-        } catch ( DigestException e ) {
-            LOGGER.error( "Could not create SHA256 hash", e );
+        Hash digest = getSHA256();
+        if ( digest == null ) {
+            return new byte[8];
         }
 
-        return new byte[8];
+        ByteBuf buf = PooledByteBufAllocator.DEFAULT.directBuffer( 8 + input.length + key.length );
+        buf.writeLongLE( counter.getAndIncrement() );
+        buf.writeBytes( input );
+        buf.writeBytes( key );
+        digest.update( buf );
+        buf.release();
+        return digest.digest();
     }
 
     private byte[] processCipher( Cipher cipher, byte[] input ) {
@@ -367,25 +365,19 @@ public class EncryptionHandler {
     }
 
     private byte[] hashSHA256( byte[]... message ) {
-        try {
-            MessageDigest digest = getSHA256();
-            if ( digest == null ) {
-                return null;
-            }
-
-            byte[] result = new byte[digest.getDigestLength()];
-
-            for ( byte[] bytes : message ) {
-                digest.update( bytes, 0, bytes.length );
-            }
-
-            digest.digest( result, 0, result.length );
-            return result;
-        } catch ( DigestException e ) {
-            LOGGER.error( "Could not create SHA256 hash", e );
+        Hash digest = getSHA256();
+        if ( digest == null ) {
+            return null;
         }
 
-        return new byte[256];
+        ByteBuf buf = PooledByteBufAllocator.DEFAULT.directBuffer();
+        for ( byte[] bytes : message ) {
+            buf.writeBytes( bytes );
+        }
+
+        digest.update( buf );
+        buf.release();
+        return digest.digest();
     }
 
     private Cipher createCipher( boolean encryptor, byte[] key, byte[] iv ) {

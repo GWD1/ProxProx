@@ -20,12 +20,12 @@ public class ProxyConfig extends YamlConfig {
 
     // If onlineMode = true the Proxy kicks players which don't have a xbox payload in their login or the login
     // in general is not valid (certification issues)
-    private boolean onlineMode = false;
+    private boolean onlineMode = true;
 
     @Comment("Disable encryption? This does reduce the amount of CPU needed, also it seems to cause more stability" )
-    private boolean disableEncryption = true;
+    private boolean disableEncryption = false;
 
     @Comment("Gomint servers can use TCP listeners instead of Raknet to safe additional network delay and encryption overheads")
-    private boolean useTCP = true;
+    private boolean useTCP = false;
 
 }

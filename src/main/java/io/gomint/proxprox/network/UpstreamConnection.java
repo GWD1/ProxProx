@@ -299,10 +299,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                 PlayerLoginEvent event = this.proxProx.getPluginManager().callEvent( new PlayerLoginEvent( this ) );
                 if ( event.isCancelled() ) {
                     disconnect( event.getDisconnectReason() );
-
-                    // Flush the queue once to get the disconnect out
-                    this.update();
-
                     return;
                 }
 
@@ -321,6 +317,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     packetResourcePacksInfo.setBehaviourPackEntries( new ArrayList<>() );
                     packetResourcePacksInfo.setResourcePackEntries( new ArrayList<>() );
                     send( packetResourcePacksInfo );
+
+                    // Flush the queue once to get the disconnect out
+                    this.update();
                 } else {
                     // We need to start encryption first
                     this.proxProx.getWatchdog().add( 500, TimeUnit.MILLISECONDS );
@@ -335,6 +334,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         PacketEncryptionRequest packetEncryptionRequest = new PacketEncryptionRequest();
                         packetEncryptionRequest.setJwt( encryptionRequestJWT );
                         send( packetEncryptionRequest );
+
+                        // Flush the queue once to get the disconnect out
+                        this.update();
                     } else {
                         disconnect( "Error in creating AES token" );
                     }
@@ -346,6 +348,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
             case Protocol.PACKET_ENCRYPTION_READY:
                 this.state = ConnectionState.ENCRYPTED;
+
                 send( new PacketPlayState( PacketPlayState.PlayState.LOGIN_SUCCESS ) );
 
                 // Send resource pack stuff
@@ -569,6 +572,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         send( new PacketDisconnect( reason ) );
         this.disconnect = reason;
         LOGGER.info( "Disconnected: {}", this.disconnect );
+
+        // Flush the queue once to get the disconnect out
+        this.update();
     }
 
     /**
