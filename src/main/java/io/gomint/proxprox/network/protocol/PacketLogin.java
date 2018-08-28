@@ -27,14 +27,14 @@ public class PacketLogin extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeInt( this.protocol );
         buffer.writeUnsignedVarInt( this.payload.length );
         buffer.writeBytes( this.payload );
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.protocol = buffer.readInt();
         this.payload = new byte[buffer.readUnsignedVarInt()];
         buffer.readBytes( this.payload );

@@ -35,7 +35,7 @@ public class PacketText extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeByte( this.type.getId() );
         buffer.writeBoolean( false );
 
@@ -49,8 +49,11 @@ public class PacketText extends Packet {
             case WHISPER:
             case ANNOUNCEMENT:
                 buffer.writeString( this.sender );
-                buffer.writeString( this.sourceThirdPartyName );
-                buffer.writeSignedVarInt( this.sourcePlatform );
+
+                if ( protocolVersion < Protocol.MINECRAFT_PE_BETA_PROTOCOL_VERSION ) {
+                    buffer.writeString( this.sourceThirdPartyName );
+                    buffer.writeSignedVarInt( this.sourcePlatform );
+                }
             case CLIENT_MESSAGE:
             case TIP_MESSAGE:
             case SYSTEM_MESSAGE:
@@ -74,7 +77,7 @@ public class PacketText extends Packet {
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.type = Type.getById( buffer.readByte() );
         buffer.readBoolean();
         switch ( this.type ) {
@@ -82,8 +85,11 @@ public class PacketText extends Packet {
             case WHISPER:
             case ANNOUNCEMENT:
                 this.sender = buffer.readString();
-                this.sourceThirdPartyName = buffer.readString();
-                this.sourcePlatform = buffer.readSignedVarInt();
+
+                if ( protocolVersion < Protocol.MINECRAFT_PE_BETA_PROTOCOL_VERSION ) {
+                    this.sourceThirdPartyName = buffer.readString();
+                    this.sourcePlatform = buffer.readSignedVarInt();
+                }
             case CLIENT_MESSAGE:
             case TIP_MESSAGE:
             case SYSTEM_MESSAGE:

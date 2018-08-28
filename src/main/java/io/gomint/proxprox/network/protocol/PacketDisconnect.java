@@ -35,13 +35,13 @@ public class PacketDisconnect extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeBoolean( this.hideDisconnectScreen );
         buffer.writeString( this.message );
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.hideDisconnectScreen = buffer.readBoolean();
         this.message = buffer.readString();
     }

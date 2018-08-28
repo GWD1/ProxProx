@@ -29,12 +29,12 @@ public class PacketStartGame extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
 
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         // We only need the runtime id
         buffer.readSignedVarLong();
         this.runtimeEntityId = buffer.readUnsignedVarLong();

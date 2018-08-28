@@ -107,12 +107,12 @@ public class PacketPlayState extends Packet {
 	}
 
 	@Override
-	public void serialize( PacketBuffer buffer ) {
+	public void serialize( PacketBuffer buffer, int protocolVersion ) {
 		buffer.writeInt( this.state.getValue() );
 	}
 
 	@Override
-	public void deserialize( PacketBuffer buffer ) {
+	public void deserialize( PacketBuffer buffer, int protocolVersion ) {
 		this.state = PlayState.fromValue( buffer.readInt() );
 	}
 

@@ -164,10 +164,12 @@ public class EntityRewriter {
 
         Long rewrite = this.rewriteIds.get( entityId );
         if ( rewrite == null ) {
-            LOGGER.warn( "Got entity packet for entity not spawned yet: {} for {} (Server {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
+            if ( LOGGER.isDebugEnabled() ) {
+                LOGGER.debug( "Got entity packet for entity not spawned yet: {} for {} (Server {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
 
-            for ( Map.Entry<Long, Long> longLongEntry : this.rewriteIds.entrySet() ) {
-                LOGGER.debug( "{} -> {}", longLongEntry.getKey(), longLongEntry.getValue() );
+                for ( Map.Entry<Long, Long> longLongEntry : this.rewriteIds.entrySet() ) {
+                    LOGGER.debug( "{} -> {}", longLongEntry.getKey(), longLongEntry.getValue() );
+                }
             }
 
             return entityId;
@@ -305,11 +307,11 @@ public class EntityRewriter {
     public Long removeEntity( long entityId, DownstreamConnection connection ) {
         Long newEntity = this.rewriteIds.remove( entityId );
         if ( newEntity == null ) {
-            LOGGER.warn( "Removing an entity which wasn't known. This could lead to side effect like players not showing correctly" );
+            LOGGER.debug( "Removing an entity which wasn't known. This could lead to side effect like players not showing correctly" );
             return null;
         }
 
-        // LOGGER.debug( "Removing entity {} for {} (Server: {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
+        LOGGER.debug( "Removing entity {} for {} (Server: {}:{})", entityId, connection.getUpstreamConnection().getName(), connection.getIP(), connection.getPort() );
 
         this.serverRewriteIds.remove( newEntity );
         return newEntity;

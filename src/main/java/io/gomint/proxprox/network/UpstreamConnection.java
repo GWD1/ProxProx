@@ -169,27 +169,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     protected void handlePacket( PacketBuffer buffer ) {
         // Grab the packet ID from the packet's data
         int rawId = buffer.readUnsignedVarInt();
-        byte packetId;
+        byte packetId = (byte) rawId;
 
-        // Check for split id stuff
-        if ( this.connection.getProtocolVersion() == 8 ) {
-            packetId = (byte) rawId;
-
-            // There is some data behind the packet id when non batched packets (2 bytes)
-            if ( packetId == Protocol.PACKET_BATCH ) {
-                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            }
-
-            // TODO: Proper implement sending subclient and target subclient (two bytes)
-            buffer.readShort();
-        } else {
-            // TODO: Find the new way of how the split ids are handled
-            packetId = (byte) rawId;
-
-            // There is some data behind the packet id when non batched packets (2 bytes)
-            if ( packetId == Protocol.PACKET_BATCH ) {
-                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            }
+        // There is some data behind the packet id when non batched packets (2 bytes)
+        if ( packetId == Protocol.PACKET_BATCH ) {
+            LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
         }
 
         int pos = buffer.getPosition();
@@ -713,11 +697,6 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         PacketBuffer packetBuffer = new PacketBuffer( data.length + 3 );
         packetBuffer.writeByte( packetId );
-
-        if ( this.connection.getProtocolVersion() == 8 ) {
-            packetBuffer.writeShort( (short) 0 );
-        }
-
         packetBuffer.writeBytes( data );
 
         this.packetQueue.offer( packetBuffer );

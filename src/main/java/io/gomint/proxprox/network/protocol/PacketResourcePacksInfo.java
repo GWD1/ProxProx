@@ -28,7 +28,7 @@ public class PacketResourcePacksInfo extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeBoolean( this.mustAccept );
 
         buffer.writeLShort( (short) ( this.behaviourPackEntries == null ? 0 : this.behaviourPackEntries.size() ) );
@@ -37,6 +37,7 @@ public class PacketResourcePacksInfo extends Packet {
                 buffer.writeString( entry.getVersion().getId().toString() );
                 buffer.writeString( entry.getVersion().getVersion() );
                 buffer.writeLLong( entry.getSize() );
+                buffer.writeString( "" );
                 buffer.writeString( "" );
                 buffer.writeString( "" );
             }
@@ -50,12 +51,13 @@ public class PacketResourcePacksInfo extends Packet {
                 buffer.writeLLong( entry.getSize() );
                 buffer.writeString( "" );
                 buffer.writeString( "" );
+                buffer.writeString( "" );
             }
         }
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.mustAccept = buffer.readBoolean();
 
         short behaviourPackLength = buffer.readLShort();

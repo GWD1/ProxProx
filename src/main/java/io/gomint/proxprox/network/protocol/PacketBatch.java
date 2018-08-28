@@ -29,12 +29,12 @@ public class PacketBatch extends Packet {
 	}
 
 	@Override
-	public void serialize( PacketBuffer buffer ) {
+	public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeBytes( this.payload );
 	}
 
 	@Override
-	public void deserialize( PacketBuffer buffer ) {
+	public void deserialize( PacketBuffer buffer, int protocolVersion ) {
 		this.payload = new byte[buffer.getRemaining()];
 		buffer.readBytes( this.payload );
 	}

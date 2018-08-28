@@ -34,12 +34,12 @@ public class PacketRemoveEntity extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeSignedVarLong( this.entityId );
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.entityId = buffer.readSignedVarLong().longValue();
     }
 }

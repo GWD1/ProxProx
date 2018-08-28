@@ -26,7 +26,7 @@ public class PacketResourcePackResponse extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeByte( this.status.getId() );
         buffer.writeLShort( (short) this.info.size() );
         for ( Map.Entry<String, String> entry : this.info.entrySet() ) {
@@ -36,7 +36,7 @@ public class PacketResourcePackResponse extends Packet {
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.status = ResourceResponseStatus.valueOf( buffer.readByte() );
         this.info = new HashMap<>();
 

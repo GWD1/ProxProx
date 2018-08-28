@@ -174,7 +174,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection.setEventHandler( new SocketEventHandler() {
                 @Override
                 public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    // LOGGER.info( "Got socketEvent: " + socketEvent.getType().name() );
+                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
                     switch ( socketEvent.getType() ) {
                         case CONNECTION_ATTEMPT_SUCCEEDED:
                             // We got accepted *yay*
@@ -290,33 +290,16 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     protected void handlePacket( PacketBuffer buffer ) {
         // Grab the packet ID from the packet's data
         int rawId = buffer.readUnsignedVarInt();
-        byte packetId;
+        byte packetId = (byte) rawId;
 
-        // Check for split id stuff
-        if ( this.upstreamConnection.getConnection().getProtocolVersion() == 8 ) {
-            packetId = (byte) rawId;
-
-            // There is some data behind the packet id when non batched packets (2 bytes)
-            if ( packetId == Protocol.PACKET_BATCH ) {
-                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            }
-
-            // TODO: Proper implement sending subclient and target subclient (two bytes)
-            buffer.readShort();
-        } else {
-            // TODO: Find the new way of how the split ids are handled
-            packetId = (byte) rawId;
-
-            // There is some data behind the packet id when non batched packets (2 bytes)
-            if ( packetId == Protocol.PACKET_BATCH ) {
-                LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
-            }
+        // There is some data behind the packet id when non batched packets (2 bytes)
+        if ( packetId == Protocol.PACKET_BATCH ) {
+            LOGGER.error( "Malformed batch packet payload: Batch packets are not allowed to contain further batch packets" );
         }
 
         int pos = buffer.getPosition();
 
-        // DumpUtil.dumpByteArray( buffer.getBuffer() );
-        // LOGGER.info( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
+        LOGGER.debug( "Got packet {}. Upstream pending: {}, down: {}, this: {}", Integer.toHexString( packetId & 0xFF ), this.upstreamConnection.getPendingDownStream(), this.upstreamConnection.getDownStream(), this );
 
         // Minimalistic protocol
         switch ( packetId ) {
@@ -678,10 +661,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             PacketBuffer newBuffer = new PacketBuffer( 64 );
             newBuffer.writeByte( packetId );
 
-            if ( this.upstreamConnection.getConnection().getProtocolVersion() == 8 ) {
-                newBuffer.writeShort( (short) 0 );
-            }
-
             byte[] data = new byte[buffer.getRemaining()];
             buffer.readBytes( data );
 
@@ -697,11 +676,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             PacketBuffer packetBuffer = new PacketBuffer( 64 );
             packetBuffer.writeByte( packetId );
-
-            if ( this.upstreamConnection.getConnection().getProtocolVersion() == 8 ) {
-                packetBuffer.writeShort( (short) 0 );
-            }
-
             packetBuffer.writeBytes( data );
 
             this.executor.addWork( this, Collections.singletonList( packetBuffer ) );

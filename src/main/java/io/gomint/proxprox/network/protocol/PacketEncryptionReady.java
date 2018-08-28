@@ -11,12 +11,12 @@ public class PacketEncryptionReady extends Packet {
 	}
 	
 	@Override
-	public void serialize( PacketBuffer buffer ) {
+	public void serialize( PacketBuffer buffer, int protocolVersion ) {
 		
 	}
 	
 	@Override
-	public void deserialize( PacketBuffer buffer ) {
+	public void deserialize( PacketBuffer buffer, int protocolVersion ) {
 		
 	}
 	

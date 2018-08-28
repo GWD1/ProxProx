@@ -52,7 +52,7 @@ public class PacketInventoryTransaction extends Packet {
     }
 
     @Override
-    public void serialize( PacketBuffer buffer ) {
+    public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeUnsignedVarInt( this.type );
 
         // Write actions
@@ -105,7 +105,7 @@ public class PacketInventoryTransaction extends Packet {
     }
 
     @Override
-    public void deserialize( PacketBuffer buffer ) {
+    public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.type = buffer.readUnsignedVarInt();
 
         // Read transaction action(s)
