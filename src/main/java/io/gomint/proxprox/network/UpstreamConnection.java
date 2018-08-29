@@ -101,10 +101,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private boolean localPlayerInit;
 
     @Getter
-    private EntityRewriter entityRewriter = new EntityRewriter();
+    private EntityRewriter entityRewriter;
     @Getter
     private EffectManager effectManager = new EffectManager();
-    private int protocolVersion;
+    @Getter private int protocolVersion;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
@@ -127,6 +127,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
      */
     public UpstreamConnection( ProxProx proxProx, Connection connection ) {
         super();
+
+        this.entityRewriter = new EntityRewriter( this );
+
         this.proxProx = proxProx;
         this.connection = connection;
 
@@ -187,7 +190,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             case Protocol.PACKET_LOGIN:
                 // Parse the login packet
                 PacketLogin packet = new PacketLogin();
-                packet.deserialize( buffer );
+                packet.deserialize( buffer, -1 );
 
                 LOGGER.info( "Login version number: " + packet.getProtocol() );
 
@@ -345,7 +348,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
             case Protocol.PACKET_RESOURCEPACK_RESPONSE:
                 PacketResourcePackResponse resourcePackResponse = new PacketResourcePackResponse();
-                resourcePackResponse.deserialize( buffer );
+                resourcePackResponse.deserialize( buffer, this.protocolVersion );
 
                 switch ( resourcePackResponse.getStatus() ) {
                     case HAVE_ALL_PACKS:
@@ -365,7 +368,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
             case Protocol.PACKET_SET_CHUNK_RADIUS:
                 PacketSetChunkRadius packetSetChunkRadius = new PacketSetChunkRadius();
-                packetSetChunkRadius.deserialize( buffer );
+                packetSetChunkRadius.deserialize( buffer, this.protocolVersion );
 
                 this.viewDistance = packetSetChunkRadius.getChunkRadius();
 
@@ -537,11 +540,11 @@ public class UpstreamConnection extends AbstractConnection implements Player {
 
         if ( packet.mustBeInBatch() ) {
             packet.serializeHeader( buffer, this.connection.getProtocolVersion() );
-            packet.serialize( buffer );
+            packet.serialize( buffer, this.protocolVersion );
             this.packetQueue.offer( buffer );
         } else {
             buffer.writeByte( packet.getId() );
-            packet.serialize( buffer );
+            packet.serialize( buffer, this.protocolVersion );
             this.connection.send( PacketReliability.RELIABLE_ORDERED, packet.orderingChannel(), buffer.getBuffer(), 0, buffer.getPosition() );
         }
     }

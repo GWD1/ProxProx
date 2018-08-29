@@ -309,7 +309,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_START_GAME:
                 PacketStartGame startGame = new PacketStartGame();
-                startGame.deserialize( buffer );
+                startGame.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 if ( this.upstreamConnection.isFirstServer() ) {
                     this.upstreamConnection.getEntityRewriter().setOwnId( startGame.getRuntimeEntityId() );
@@ -352,7 +352,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.REMOVE_ENTITY_PACKET:
                 PacketRemoveEntity removeEntity = new PacketRemoveEntity();
-                removeEntity.deserialize( buffer );
+                removeEntity.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 Long entityId = this.upstreamConnection.getEntityRewriter().removeEntity( removeEntity.getEntityId(), this );
                 if ( entityId != null ) {
@@ -369,7 +369,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_ENTITY_METADATA:
                 PacketEntityMetadata metadata = new PacketEntityMetadata();
-                metadata.deserialize( buffer );
+                metadata.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 metadata.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( metadata.getEntityId(), this ) );
 
@@ -390,7 +390,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.ADD_ITEM_ENTITY:
                 PacketAddItem packetAddItem = new PacketAddItem();
-                packetAddItem.deserialize( buffer );
+                packetAddItem.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 long addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddItem.getEntityId(), this );
                 packetAddItem.setEntityId( addedId );
@@ -401,7 +401,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.ADD_ENTITY_PACKET:
                 PacketAddEntity packetAddEntity = new PacketAddEntity();
-                packetAddEntity.deserialize( buffer );
+                packetAddEntity.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddEntity.getEntityId(), this );
                 packetAddEntity.setEntityId( addedId );
@@ -424,7 +424,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.ADD_PLAYER_PACKET:
                 PacketAddPlayer packetAddPlayer = new PacketAddPlayer();
-                packetAddPlayer.deserialize( buffer );
+                packetAddPlayer.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 addedId = this.upstreamConnection.getEntityRewriter().addEntity( packetAddPlayer.getEntityId(), this );
                 packetAddPlayer.setEntityId( addedId );
@@ -435,7 +435,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_ENCRYPTION_REQUEST:
                 PacketEncryptionRequest packet = new PacketEncryptionRequest();
-                packet.deserialize( buffer );
+                packet.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 // We need to verify the JWT request
                 JwtToken token = JwtToken.parse( packet.getJwt() );
@@ -463,7 +463,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_PLAY_STATE:
                 PacketPlayState packetPlayState = new PacketPlayState();
-                packetPlayState.deserialize( buffer );
+                packetPlayState.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 // We have been logged in. But we miss a spawn packet
                 if ( packetPlayState.getState() == PacketPlayState.PlayState.LOGIN_SUCCESS ) {
@@ -489,7 +489,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_RESOURCEPACK_INFO:
                 PacketResourcePacksInfo packetResourcePacksInfo = new PacketResourcePacksInfo();
-                packetResourcePacksInfo.deserialize( buffer );
+                packetResourcePacksInfo.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 if ( packetResourcePacksInfo.isMustAccept() ) {
                     this.disconnect( "Server did send resource packs" );
@@ -506,7 +506,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_DISCONNECT:
                 PacketDisconnect packetDisconnect = new PacketDisconnect();
-                packetDisconnect.deserialize( buffer );
+                packetDisconnect.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 this.close( true, packetDisconnect.getMessage() );
 
@@ -523,7 +523,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
             case Protocol.PACKET_MOB_EFFECT:
                 PacketMobEffect mobEffect = new PacketMobEffect();
-                mobEffect.deserialize( buffer );
+                mobEffect.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
                 mobEffect.setEntityId( this.upstreamConnection.getEntityRewriter().getReplacementId( mobEffect.getEntityId(), this ) );
 
@@ -639,7 +639,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             buffer.writeByte( packet.getId() );
         }
 
-        packet.serialize( buffer );
+        packet.serialize( buffer, this.upstreamConnection.getProtocolVersion() );
 
         // Do we send via TCP or UDP?
         if ( this.tcpConnection != null ) {

@@ -2,6 +2,7 @@ package io.gomint.proxprox.util;
 
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.network.DownstreamConnection;
+import io.gomint.proxprox.network.UpstreamConnection;
 import io.gomint.proxprox.network.protocol.PacketInventoryTransaction;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -22,13 +23,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public class EntityRewriter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger( EntityRewriter.class );
+    private final UpstreamConnection upstream;
 
-    @Getter
-    @Setter
-    private long ownId;
-    @Getter
-    @Setter
-    private long currentDownStreamId;
+    @Getter @Setter private long ownId;
+    @Getter @Setter private long currentDownStreamId;
     private AtomicLong idCounter = new AtomicLong( 0 );
 
     private Map<Long, Long> rewriteIds = new ConcurrentHashMap<>();
@@ -284,14 +282,14 @@ public class EntityRewriter {
 
             case 0x1E: // Inventory transaction
                 PacketInventoryTransaction inventoryTransaction = new PacketInventoryTransaction();
-                inventoryTransaction.deserialize( buffer );
+                inventoryTransaction.deserialize( buffer, this.upstream.getProtocolVersion() );
 
                 // Check if the action is a entity based
                 if ( inventoryTransaction.getType() == PacketInventoryTransaction.TYPE_USE_ITEM_ON_ENTITY ) {
                     entityId = inventoryTransaction.getEntityId();
                     inventoryTransaction.setEntityId( getReplacementIdForServer( entityId ) );
                     buffer = new PacketBuffer( 8 );
-                    inventoryTransaction.serialize( buffer );
+                    inventoryTransaction.serialize( buffer, this.upstream.getProtocolVersion() );
                     buffer.shrink();
                     buffer.resetPosition();
                 } else {
