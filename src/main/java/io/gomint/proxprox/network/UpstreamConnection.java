@@ -539,7 +539,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         LOGGER.debug( "Sending packet {}", Integer.toHexString( packet.getId() & 0xFF ) );
 
         if ( packet.mustBeInBatch() ) {
-            packet.serializeHeader( buffer, this.connection.getProtocolVersion() );
+            packet.serializeHeader( buffer );
             packet.serialize( buffer, this.protocolVersion );
             this.packetQueue.offer( buffer );
         } else {

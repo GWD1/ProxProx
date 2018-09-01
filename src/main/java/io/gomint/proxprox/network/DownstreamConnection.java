@@ -169,43 +169,38 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         } else {
             this.initDecompressor();
             this.connection = new ClientSocket();
-            this.connection.setMojangModificationEnabled( true );
-            this.connection.setProtocolVersion( this.upstreamConnection.getConnection().getProtocolVersion() );
-            this.connection.setEventHandler( new SocketEventHandler() {
-                @Override
-                public void onSocketEvent( Socket socket, SocketEvent socketEvent ) {
-                    LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
-                    switch ( socketEvent.getType() ) {
-                        case CONNECTION_ATTEMPT_SUCCEEDED:
-                            // We got accepted *yay*
-                            DownstreamConnection.this.setup();
-                            DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
-                            break;
+            this.connection.setEventHandler( ( socket, socketEvent ) -> {
+                LOGGER.debug( "Got socketEvent: " + socketEvent.getType().name() );
+                switch ( socketEvent.getType() ) {
+                    case CONNECTION_ATTEMPT_SUCCEEDED:
+                        // We got accepted *yay*
+                        DownstreamConnection.this.setup();
+                        DownstreamConnection.this.upstreamConnection.onDownStreamConnected( DownstreamConnection.this );
+                        break;
 
-                        case CONNECTION_CLOSED:
-                        case CONNECTION_DISCONNECTED:
-                            LOGGER.info( "Disconnected downstream..." );
-                            if ( !DownstreamConnection.this.manualClose ) {
-                                DownstreamConnection.this.updateIncoming( socketEvent.getConnection() );
-                                DownstreamConnection.this.close( true, "Raknet disconnected" );
+                    case CONNECTION_CLOSED:
+                    case CONNECTION_DISCONNECTED:
+                        LOGGER.info( "Disconnected downstream..." );
+                        if ( !DownstreamConnection.this.manualClose ) {
+                            DownstreamConnection.this.updateIncoming( socketEvent.getConnection() );
+                            DownstreamConnection.this.close( true, "Raknet disconnected" );
 
-                                // Check if we need to disconnect upstream
-                                if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
-                                    if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
-                                        return;
-                                    } else {
-                                        upstreamConnection.disconnect( "The Server has gone down" );
-                                    }
+                            // Check if we need to disconnect upstream
+                            if ( DownstreamConnection.this.equals( upstreamConnection.getDownStream() ) ) {
+                                if ( upstreamConnection.getPendingDownStream() != null || upstreamConnection.connectToLastKnown() ) {
+                                    return;
                                 } else {
-                                    upstreamConnection.resetPendingDownStream();
+                                    upstreamConnection.disconnect( "The Server has gone down" );
                                 }
+                            } else {
+                                upstreamConnection.resetPendingDownStream();
                             }
+                        }
 
-                            break;
+                        break;
 
-                        default:
-                            break;
-                    }
+                    default:
+                        break;
                 }
             } );
 
@@ -634,7 +629,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         PacketBuffer buffer = new PacketBuffer( 64 );
 
         if ( !( packet instanceof PacketBatch ) ) {
-            packet.serializeHeader( buffer, this.upstreamConnection.getConnection().getProtocolVersion() );
+            packet.serializeHeader( buffer );
         } else {
             buffer.writeByte( packet.getId() );
         }
@@ -644,7 +639,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         // Do we send via TCP or UDP?
         if ( this.tcpConnection != null ) {
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
-            mcpePacket.setRaknetVersion( this.upstreamConnection.getConnection().getProtocolVersion() );
+            mcpePacket.setRaknetVersion( (byte) 9 );
             mcpePacket.setBuffer( new PacketBuffer[]{ buffer } );
             this.tcpConnection.send( mcpePacket );
         } else if ( this.connection != null ) {
@@ -667,7 +662,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             newBuffer.writeBytes( data );
 
             WrappedMCPEPacket mcpePacket = new WrappedMCPEPacket();
-            mcpePacket.setRaknetVersion( this.upstreamConnection.getConnection().getProtocolVersion() );
+            mcpePacket.setRaknetVersion( (byte) 9 );
             mcpePacket.setBuffer( new PacketBuffer[]{ newBuffer } );
             this.tcpConnection.send( mcpePacket );
         } else {
