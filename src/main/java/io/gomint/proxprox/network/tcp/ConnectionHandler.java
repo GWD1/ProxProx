@@ -108,7 +108,8 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     }
 
     public void disconnect() {
-        this.ctx.disconnect();
+        this.ctx.flush();
+        this.ctx.close();
     }
 
     private static final class Flusher implements Runnable {
