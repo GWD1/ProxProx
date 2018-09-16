@@ -108,11 +108,7 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
     }
 
     public void disconnect() {
-        try {
-            this.ctx.close().get( 1, TimeUnit.SECONDS );
-        } catch ( InterruptedException | ExecutionException | TimeoutException e ) {
-            LOGGER.error( "Could not close connection: ", e );
-        }
+        this.ctx.disconnect();
     }
 
     private static final class Flusher implements Runnable {
