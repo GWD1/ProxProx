@@ -13,9 +13,9 @@ package io.gomint.proxprox.network;
  */
 public class Protocol {
 
-    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = 290;
-    public static final int MINECRAFT_PE_PROTOCOL_VERSION = 282;
-    public static final String MINECRAFT_PE_NETWORK_VERSION = "1.6.0";
+    public static final int MINECRAFT_PE_BETA_PROTOCOL_VERSION = -1;
+    public static final int MINECRAFT_PE_PROTOCOL_VERSION = 291;
+    public static final String MINECRAFT_PE_NETWORK_VERSION = "1.7.0";
 
     /**
      * Packet ID of the login packet

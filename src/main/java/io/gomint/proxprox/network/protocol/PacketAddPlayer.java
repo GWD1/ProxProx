@@ -43,11 +43,6 @@ public class PacketAddPlayer extends Packet {
         buffer.writeUUID( this.uuid );
         buffer.writeString( this.name );
 
-        if ( protocolVersion < Protocol.MINECRAFT_PE_BETA_PROTOCOL_VERSION ) {
-            buffer.writeString( this.thirdPartyName );
-            buffer.writeSignedVarInt( this.platformID );
-        }
-
         buffer.writeSignedVarLong( this.entityId );
         buffer.writeUnsignedVarLong( this.entityId );
 
@@ -59,11 +54,6 @@ public class PacketAddPlayer extends Packet {
         // I only care for the entity id long
         this.uuid = buffer.readUUID();
         this.name = buffer.readString();
-
-        if ( protocolVersion < Protocol.MINECRAFT_PE_BETA_PROTOCOL_VERSION ) {
-            this.thirdPartyName = buffer.readString();
-            this.platformID = buffer.readSignedVarInt();
-        }
 
         this.entityId = buffer.readSignedVarLong().longValue();
         buffer.readUnsignedVarLong();
