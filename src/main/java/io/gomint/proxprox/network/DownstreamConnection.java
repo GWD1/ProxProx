@@ -23,22 +23,7 @@ import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.api.network.PacketSender;
 import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
-import io.gomint.proxprox.network.protocol.PacketAddEntity;
-import io.gomint.proxprox.network.protocol.PacketAddItem;
-import io.gomint.proxprox.network.protocol.PacketAddPlayer;
-import io.gomint.proxprox.network.protocol.PacketBatch;
-import io.gomint.proxprox.network.protocol.PacketDisconnect;
-import io.gomint.proxprox.network.protocol.PacketEncryptionReady;
-import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
-import io.gomint.proxprox.network.protocol.PacketEntityMetadata;
-import io.gomint.proxprox.network.protocol.PacketMobEffect;
-import io.gomint.proxprox.network.protocol.PacketPlayState;
-import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
-import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
-import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
-import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
-import io.gomint.proxprox.network.protocol.PacketSetLocalPlayerAsInitialized;
-import io.gomint.proxprox.network.protocol.PacketStartGame;
+import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.protocol.type.ResourceResponseStatus;
 import io.gomint.proxprox.network.tcp.ConnectionHandler;
 import io.gomint.proxprox.network.tcp.Initializer;
@@ -53,15 +38,10 @@ import org.slf4j.LoggerFactory;
 
 import java.net.SocketException;
 import java.security.Key;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author geNAZt
@@ -88,6 +68,9 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
     // Proxy instance
     private ProxProx proxProx;
+
+    // Player List entry uuids
+    private Set<UUID> playerListEntries = Collections.synchronizedSet( new HashSet<>() );
 
     // Entities
     private Set<Long> spawnedEntities = Collections.synchronizedSet( new HashSet<>() );
@@ -533,6 +516,22 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
                 break;
 
+            case Protocol.PACKET_PLAYER_LIST:
+                PacketPlayerlist playerlist = new PacketPlayerlist();
+                playerlist.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
+
+                // Filter out our player
+                List<PacketPlayerlist.Entry> filteredEntries = playerlist.getEntries().stream().filter(playerListEntry -> !playerListEntry.getUuid().equals( this.upstreamConnection.getUUID() ) ).collect( Collectors.toList() );
+
+                if( playerlist.getMode() == 0 ) { // Adding entries
+                    filteredEntries.forEach( playerListEntry -> this.playerListEntries.add( playerListEntry.getUuid() ) );
+                } else { // Remove entries
+                    filteredEntries.forEach( playerListEntry -> this.playerListEntries.remove( playerListEntry.getUuid() ) );
+                }
+
+                this.upstreamConnection.send( playerlist );
+                break;
+
             default:
                 buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer, this );
                 this.upstreamConnection.send( packetId, buffer );
@@ -614,6 +613,15 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         }
 
         return this.connection.getConnection();
+    }
+
+    /**
+     * Return a collection of all currently entry uuids of the player list
+     *
+     * @return
+     */
+    public Set<UUID> getPlayerListEntries() {
+        return this.playerListEntries;
     }
 
     /**

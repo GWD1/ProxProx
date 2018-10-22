@@ -54,6 +54,11 @@ public class Protocol {
     public static final byte ADD_PLAYER_PACKET = (byte) 0x0c;
 
     /**
+     * Packet ID for Player List Add / Remove
+     */
+    public static final byte PACKET_PLAYER_LIST = (byte) 0x3F;
+
+    /**
      * Packet ID for Entity Add
      */
     public static final byte ADD_ENTITY_PACKET = (byte) 0x0d;

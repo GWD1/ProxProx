@@ -29,20 +29,7 @@ import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
 import io.gomint.proxprox.jwt.MojangChainValidator;
 import io.gomint.proxprox.jwt.MojangLoginForger;
-import io.gomint.proxprox.network.protocol.PacketDisconnect;
-import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
-import io.gomint.proxprox.network.protocol.PacketLogin;
-import io.gomint.proxprox.network.protocol.PacketMobEffect;
-import io.gomint.proxprox.network.protocol.PacketMobEquipment;
-import io.gomint.proxprox.network.protocol.PacketMovePlayer;
-import io.gomint.proxprox.network.protocol.PacketPlayState;
-import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
-import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
-import io.gomint.proxprox.network.protocol.PacketResourcePackStack;
-import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
-import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
-import io.gomint.proxprox.network.protocol.PacketSetGamemode;
-import io.gomint.proxprox.network.protocol.PacketText;
+import io.gomint.proxprox.network.protocol.*;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
 import io.gomint.proxprox.util.EffectManager;
@@ -464,6 +451,19 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         if ( this.currentDownStream != null ) {
             this.lastKnownServer = new ServerDataHolder( this.currentDownStream.getIP(), this.currentDownStream.getPort() );
             this.currentDownStream.close( false, "Transfer to new server" );
+
+            // Cleanup all player list
+            PacketPlayerlist packetPlayerlist = new PacketPlayerlist();
+            packetPlayerlist.setMode( (byte) 1 );
+
+            packetPlayerlist.setEntries( new ArrayList<>() );
+
+            for ( UUID entryId : this.currentDownStream.getPlayerListEntries() ) {
+                packetPlayerlist.getEntries().add( new PacketPlayerlist.Entry( entryId ) );
+            }
+
+            send( packetPlayerlist );
+            this.currentDownStream.getPlayerListEntries().clear();
 
             // Cleanup all entities
             for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
