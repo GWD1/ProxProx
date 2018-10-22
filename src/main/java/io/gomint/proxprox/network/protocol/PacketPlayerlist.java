@@ -6,7 +6,6 @@ import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.network.Protocol;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 import java.util.Arrays;
@@ -28,7 +27,7 @@ public class PacketPlayerlist extends Packet {
     }
 
     @Override
-    public void serialize(PacketBuffer buffer, int protocolID ) {
+    public void serialize( PacketBuffer buffer, int protocolID ) {
         buffer.writeByte( this.mode );
         buffer.writeUnsignedVarInt( this.entries.size() );
 
@@ -41,8 +40,8 @@ public class PacketPlayerlist extends Packet {
                 buffer.writeString( entry.getSkin().getName() );
 
                 // Raw skin data
-                buffer.writeUnsignedVarInt( entry.getSkin().getRawData().length );
-                buffer.writeBytes( entry.getSkin().getRawData() );
+                buffer.writeUnsignedVarInt( entry.getSkin().getData().length );
+                buffer.writeBytes( entry.getSkin().getData() );
 
                 // Cape data
                 if ( entry.skin.getCapeData() != null ) {
@@ -56,8 +55,8 @@ public class PacketPlayerlist extends Packet {
                 buffer.writeString( entry.skin.getGeometryName() );
 
                 // Geometry data
-                buffer.writeUnsignedVarInt( entry.skin.getGeometryData().length() );
-                buffer.writeBytes( entry.skin.getGeometryData().getBytes() );
+                buffer.writeUnsignedVarInt( entry.skin.getGeometryData().length );
+                buffer.writeBytes( entry.skin.getGeometryData() );
 
                 // xbox user id
                 buffer.writeString( entry.xboxId );
@@ -73,7 +72,7 @@ public class PacketPlayerlist extends Packet {
     }
 
     @Override
-    public void deserialize(PacketBuffer buffer, int protocolID ) {
+    public void deserialize( PacketBuffer buffer, int protocolID ) {
         this.mode = buffer.readByte();
         Entry[] entries = new Entry[buffer.readUnsignedVarInt()];
 
@@ -84,24 +83,20 @@ public class PacketPlayerlist extends Packet {
                 entry.entityId = buffer.readSignedVarLong().longValue();
                 entry.name = buffer.readString();
 
-                entry.skin.setName( buffer.readString() );
-                byte[] skinData = new byte[ buffer.readUnsignedVarInt() ];
+                String skinName = buffer.readString();
+                byte[] skinData = new byte[buffer.readUnsignedVarInt()];
                 buffer.readBytes( skinData );
 
-                entry.skin.setData( skinData );
-
-                byte[] capeData = new byte[ buffer.readUnsignedVarInt() ];
-                if( capeData.length > 0 )
+                byte[] capeData = new byte[buffer.readUnsignedVarInt()];
+                if ( capeData.length > 0 ) {
                     buffer.readBytes( capeData );
+                }
 
-                entry.skin.setCapeData( capeData );
-
-                entry.skin.setGeometryName( buffer.readString() );
-
-                byte[] geometryData = new byte[ buffer.readUnsignedVarInt() ];
+                String geometryName = buffer.readString();
+                byte[] geometryData = new byte[buffer.readUnsignedVarInt()];
                 buffer.readBytes( geometryData );
 
-                entry.skin.setGeometryData( new String( geometryData ) );
+                entry.skin = new PlayerSkin( skinName, skinData, capeData, geometryName, geometryData );
 
                 entry.xboxId = buffer.readString();
 
@@ -127,7 +122,7 @@ public class PacketPlayerlist extends Packet {
         private long entityId = 0;
         private String name = "";
         private String xboxId = "";
-        private PlayerSkin skin = PlayerSkin.emptySkin();
+        private PlayerSkin skin = null;
     }
 
 }
