@@ -69,6 +69,12 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     // Proxy instance
     private ProxProx proxProx;
 
+    // Scoreboard objective names
+    private Set<String> objectiveNames = Collections.synchronizedSet( new HashSet<>() );
+
+    // Known Scoreboard scores
+    private Set<Long> knownScores = Collections.synchronizedSet( new HashSet<>() );
+
     // Player List entry uuids
     private Set<UUID> playerListEntries = Collections.synchronizedSet( new HashSet<>() );
 
@@ -532,6 +538,40 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.upstreamConnection.send( playerlist );
                 break;
 
+            case Protocol.PACKET_SET_OBJECTIVE:
+                PacketSetObjective setObjective = new PacketSetObjective();
+                setObjective.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
+
+                this.objectiveNames.add( setObjective.getObjectiveName() );
+
+                this.upstreamConnection.send( setObjective );
+
+                break;
+
+            case Protocol.PACKET_REMOVE_OBJECTIVE:
+                PacketRemoveObjective removeObjective = new PacketRemoveObjective();
+                removeObjective.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
+
+                this.objectiveNames.remove( removeObjective.getObjectiveName() );
+
+                this.upstreamConnection.send( removeObjective );
+
+                break;
+
+            case Protocol.PACKET_SET_SCORE:
+                PacketSetScore setScore = new PacketSetScore();
+                setScore.deserialize( buffer, this.upstreamConnection.getProtocolVersion() );
+
+                if( setScore.getType() == 0 ) { // Adding scores
+                    setScore.getEntries().forEach( scoreEntry -> this.knownScores.add( scoreEntry.getScoreId() ) );
+                } else { // Remove scores
+                    setScore.getEntries().forEach( scoreEntry -> this.knownScores.remove( scoreEntry.getScoreId() ) );
+                }
+
+                this.upstreamConnection.send( setScore );
+
+                break;
+
             default:
                 buffer = this.upstreamConnection.getEntityRewriter().rewriteServerToClient( packetId, pos, buffer, this );
                 this.upstreamConnection.send( packetId, buffer );
@@ -613,6 +653,24 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
         }
 
         return this.connection.getConnection();
+    }
+
+    /**
+     * Return a collection of all scoreboard objective names
+     *
+     * @return
+     */
+    public Set<String> getObjectiveNames() {
+        return this.objectiveNames;
+    }
+
+    /**
+     * Return a collection of all known scoreboard scores
+     *
+     * @return
+     */
+    public Set<Long> getKnownScores() {
+        return this.knownScores;
     }
 
     /**

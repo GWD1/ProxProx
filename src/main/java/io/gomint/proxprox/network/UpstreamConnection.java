@@ -465,6 +465,28 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             send( packetPlayerlist );
             this.currentDownStream.getPlayerListEntries().clear();
 
+            // Cleanup scoreboards
+            PacketSetScore packetSetScore = new PacketSetScore();
+            packetSetScore.setType( (byte) 1 );
+
+            packetSetScore.setEntries( new ArrayList<>() );
+
+            for ( Long scoreId : this.currentDownStream.getKnownScores() ) {
+                packetSetScore.getEntries().add( new PacketSetScore.ScoreEntry( scoreId, "", 0 ) );
+            }
+
+            send( packetSetScore );
+            this.currentDownStream.getKnownScores().clear();
+
+            for( String objectiveName : this.currentDownStream.getObjectiveNames() ) {
+                PacketRemoveObjective packetRemoveObjective = new PacketRemoveObjective();
+                packetRemoveObjective.setObjectiveName( objectiveName );
+
+                send( packetRemoveObjective );
+            }
+
+            this.currentDownStream.getObjectiveNames().clear();
+
             // Cleanup all entities
             for ( Long eID : this.currentDownStream.getSpawnedEntities() ) {
                 send( new PacketRemoveEntity( eID ) );
