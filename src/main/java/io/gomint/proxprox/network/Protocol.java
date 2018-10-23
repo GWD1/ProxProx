@@ -64,6 +64,14 @@ public class Protocol {
     public static final byte ADD_ENTITY_PACKET = (byte) 0x0d;
 
     /**
+     * Packet ID for Scoreboards
+     */
+    public static final byte PACKET_REMOVE_OBJECTIVE = (byte) 0x6a;
+    public static final byte PACKET_SET_OBJECTIVE = (byte) 0x6b;
+    public static final byte PACKET_SET_SCORE = (byte) 0x6c;
+    public static final byte PACKET_SET_SCOREBOARD_IDENTITY = (byte) 0x70;
+
+    /**
      * Packet ID for Entity Remove
      */
     public static final byte REMOVE_ENTITY_PACKET = (byte) 0x0e;
