@@ -29,7 +29,23 @@ import io.gomint.proxprox.jwt.JwtSignatureException;
 import io.gomint.proxprox.jwt.JwtToken;
 import io.gomint.proxprox.jwt.MojangChainValidator;
 import io.gomint.proxprox.jwt.MojangLoginForger;
-import io.gomint.proxprox.network.protocol.*;
+import io.gomint.proxprox.network.protocol.PacketDisconnect;
+import io.gomint.proxprox.network.protocol.PacketEncryptionRequest;
+import io.gomint.proxprox.network.protocol.PacketLogin;
+import io.gomint.proxprox.network.protocol.PacketMobEffect;
+import io.gomint.proxprox.network.protocol.PacketMobEquipment;
+import io.gomint.proxprox.network.protocol.PacketMovePlayer;
+import io.gomint.proxprox.network.protocol.PacketPlayState;
+import io.gomint.proxprox.network.protocol.PacketPlayerlist;
+import io.gomint.proxprox.network.protocol.PacketRemoveEntity;
+import io.gomint.proxprox.network.protocol.PacketRemoveObjective;
+import io.gomint.proxprox.network.protocol.PacketResourcePackResponse;
+import io.gomint.proxprox.network.protocol.PacketResourcePackStack;
+import io.gomint.proxprox.network.protocol.PacketResourcePacksInfo;
+import io.gomint.proxprox.network.protocol.PacketSetChunkRadius;
+import io.gomint.proxprox.network.protocol.PacketSetGamemode;
+import io.gomint.proxprox.network.protocol.PacketSetScore;
+import io.gomint.proxprox.network.protocol.PacketText;
 import io.gomint.proxprox.network.tcp.protocol.UpdatePingPacket;
 import io.gomint.proxprox.scheduler.SyncScheduledTask;
 import io.gomint.proxprox.util.EffectManager;
@@ -91,7 +107,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private EntityRewriter entityRewriter;
     @Getter
     private EffectManager effectManager = new EffectManager();
-    @Getter private int protocolVersion;
+    @Getter
+    private int protocolVersion;
 
     // Last known good server
     private ServerDataHolder lastKnownServer;
@@ -466,19 +483,21 @@ public class UpstreamConnection extends AbstractConnection implements Player {
             this.currentDownStream.getPlayerListEntries().clear();
 
             // Cleanup scoreboards
-            PacketSetScore packetSetScore = new PacketSetScore();
-            packetSetScore.setType( (byte) 1 );
+            if ( !this.currentDownStream.getKnownScores().isEmpty() ) {
+                PacketSetScore packetSetScore = new PacketSetScore();
+                packetSetScore.setType( (byte) 1 );
 
-            packetSetScore.setEntries( new ArrayList<>() );
+                packetSetScore.setEntries( new ArrayList<>() );
 
-            for ( Long scoreId : this.currentDownStream.getKnownScores() ) {
-                packetSetScore.getEntries().add( new PacketSetScore.ScoreEntry( scoreId, "", 0 ) );
+                for ( Long scoreId : this.currentDownStream.getKnownScores() ) {
+                    packetSetScore.getEntries().add( new PacketSetScore.ScoreEntry( scoreId, "", 0 ) );
+                }
+
+                send( packetSetScore );
+                this.currentDownStream.getKnownScores().clear();
             }
 
-            send( packetSetScore );
-            this.currentDownStream.getKnownScores().clear();
-
-            for( String objectiveName : this.currentDownStream.getObjectiveNames() ) {
+            for ( String objectiveName : this.currentDownStream.getObjectiveNames() ) {
                 PacketRemoveObjective packetRemoveObjective = new PacketRemoveObjective();
                 packetRemoveObjective.setObjectiveName( objectiveName );
 
