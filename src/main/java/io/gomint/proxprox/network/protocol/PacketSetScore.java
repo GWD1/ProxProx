@@ -71,8 +71,8 @@ public class PacketSetScore extends Packet {
             ScoreEntry scoreEntry = new ScoreEntry( scoreId, objective, score );
 
             if ( this.type == 0 ) {
-                byte entityType = buffer.readByte();
-                switch ( entityType ) {
+                scoreEntry.entityType = buffer.readByte();
+                switch ( scoreEntry.entityType ) {
                     case 3: // Fake entity
                         scoreEntry.fakeEntity = buffer.readString();
                         break;
