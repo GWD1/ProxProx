@@ -33,7 +33,7 @@
         <dependency>
             <groupId>io.gomint</groupId>
             <artifactId>jraknet</artifactId>
-            <version>6.1.1-SNAPSHOT</version>
+            <version>6.1.2-SNAPSHOT</version>
         </dependency>
 
         <!-- Logging -->
