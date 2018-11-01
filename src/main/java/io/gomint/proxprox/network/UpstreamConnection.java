@@ -833,4 +833,9 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
     }
 
+    @Override
+    public void close() {
+        this.packetQueue.clear();
+        super.close();
+    }
 }
