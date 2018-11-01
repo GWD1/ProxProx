@@ -91,12 +91,12 @@ public class SocketEventListener implements SocketEventHandler {
                         }
 
                         if ( upstreamConnection.getPendingDownStream() != null ) {
-                            upstreamConnection.getPendingDownStream().disconnect( socketEvent.getReason() );
+                            upstreamConnection.getPendingDownStream().disconnect( "Connection closed" );
                             upstreamConnection.resetPendingDownStream();
                         }
 
                         if ( upstreamConnection.getDownStream() != null ) {
-                            upstreamConnection.getDownStream().disconnect( socketEvent.getReason() );
+                            upstreamConnection.getDownStream().disconnect( "Connection closed" );
                             upstreamConnection.resetCurrentDownStream();
                         }
 

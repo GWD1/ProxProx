@@ -623,8 +623,10 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             if ( this.equals( this.upstreamConnection.getDownStream() ) ) {
                 this.upstreamConnection.resetCurrentDownStream();
 
-                if ( this.upstreamConnection.getPendingDownStream() != null || this.upstreamConnection.connectToLastKnown() ) {
-                    this.upstreamConnection.sendMessage( message );
+                if ( message != null ) {
+                    if ( this.upstreamConnection.getPendingDownStream() != null || this.upstreamConnection.connectToLastKnown() ) {
+                        this.upstreamConnection.sendMessage( message );
+                    }
                 }
             } else {
                 this.upstreamConnection.resetPendingDownStream();
