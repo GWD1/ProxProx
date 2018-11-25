@@ -197,7 +197,7 @@ public class ProxProx implements Proxy {
 
                 this.socketEventListener.update();
                 for ( Map.Entry<UUID, Player> entry : this.players.entrySet() ) {
-                    ( (UpstreamConnection) entry.getValue() ).update();
+                    ( (UpstreamConnection) entry.getValue() ).update( lastTickTime );
                 }
 
                 long diff = System.currentTimeMillis() - start;

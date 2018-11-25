@@ -123,6 +123,8 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     private int viewDistance = -1;
     private boolean disconnectNotified;
 
+    private float lastUpdate;
+
     /**
      * Create a new AbstractConnection wrapper which represents the communication from User <-> Proxy
      *
@@ -309,7 +311,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                     send( packetResourcePacksInfo );
 
                     // Flush the queue once to get the disconnect out
-                    this.update();
+                    this.update( 0.06f );
                 } else {
                     // We need to start encryption first
                     this.proxProx.getWatchdog().add( 500, TimeUnit.MILLISECONDS );
@@ -326,7 +328,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
                         send( packetEncryptionRequest );
 
                         // Flush the queue once to get the disconnect out
-                        this.update();
+                        this.update( 0.06f );
                     } else {
                         disconnect( "Error in creating AES token" );
                     }
@@ -601,7 +603,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         LOGGER.info( "Disconnected: {}", this.disconnect );
 
         // Flush the queue once to get the disconnect out
-        this.update();
+        this.update( 0.06f );
     }
 
     /**
@@ -791,10 +793,10 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
     }
 
-    public void update() {
+    public void update( float dT ) {
         // Send packets
         if ( !this.proxProx.getConfig().isUseTCP() || this.currentDownStream == null ) {
-            this.flushSendQueue();
+            this.flushSendQueue( dT );
         }
 
         // Disconnect if needed
@@ -825,11 +827,16 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         }
     }
 
-    public void flushSendQueue() {
-        if ( !this.packetQueue.isEmpty() ) {
-            List<PacketBuffer> drained = new ArrayList<>();
-            this.packetQueue.drainTo( drained );
-            this.executor.addWork( this, drained );
+    public void flushSendQueue( float dT ) {
+        this.lastUpdate += dT;
+        if ( 0.05f - this.lastUpdate < 0.0000001f ) {
+            if ( !this.packetQueue.isEmpty() ) {
+                List<PacketBuffer> drained = new ArrayList<>();
+                this.packetQueue.drainTo( drained );
+                this.executor.addWork( this, drained );
+            }
+
+            this.lastUpdate = 0;
         }
     }
 

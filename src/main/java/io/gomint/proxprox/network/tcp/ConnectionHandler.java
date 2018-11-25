@@ -63,7 +63,7 @@ public class ConnectionHandler extends SimpleChannelInboundHandler<Packet> {
         } else if ( packet instanceof SendPlayerToServerPacket ) {
             this.upstreamConnection.connect( ( (SendPlayerToServerPacket) packet ).getHost(), ( (SendPlayerToServerPacket) packet ).getPort() );
         } else if ( packet instanceof FlushTickPacket ) {
-            this.upstreamConnection.flushSendQueue();
+            this.upstreamConnection.flushSendQueue( 0.06f ); // Always flush
         }
     }
 
