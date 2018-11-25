@@ -616,9 +616,6 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             this.connection = null;
         }
 
-        super.close();
-
-
         if ( !this.manualClose ) {
             if ( this.equals( this.upstreamConnection.getDownStream() ) ) {
                 this.upstreamConnection.resetCurrentDownStream();
@@ -632,6 +629,8 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
                 this.upstreamConnection.resetPendingDownStream();
             }
         }
+
+        super.close();
     }
 
     @Override
@@ -734,7 +733,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
             mcpePacket.setRaknetVersion( (byte) 9 );
             mcpePacket.setBuffer( new PacketBuffer[]{ newBuffer } );
             this.tcpConnection.send( mcpePacket );
-        } else {
+        } else if ( this.connection.getConnection().isConnected() ) {
             byte[] data = new byte[buffer.getRemaining()];
             buffer.readBytes( data );
 

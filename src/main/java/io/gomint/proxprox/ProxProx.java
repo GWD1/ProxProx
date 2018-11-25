@@ -9,7 +9,6 @@ package io.gomint.proxprox;
 
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
-import io.gomint.jraknet.EventLoops;
 import io.gomint.jraknet.ServerSocket;
 import io.gomint.proxprox.api.ChatColor;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
@@ -39,12 +38,10 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * @author geNAZt
@@ -109,15 +106,15 @@ public class ProxProx implements Proxy {
         // ------------------------------------ //
         // Executor Initialization
         // ------------------------------------ //
-        this.executorService = MoreExecutors.listeningDecorator( EventLoops.LOOP_GROUP );
+        this.executorService = MoreExecutors.listeningDecorator( Executors.newScheduledThreadPool( 4 ) );
         this.processExecutorService = new PostProcessExecutorService( this.executorService );
 
         // Build up watchdog
         this.watchdog = new Watchdog( this.executorService, this.running );
 
         // We target 100 TPS
-        long skipNanos = TimeUnit.SECONDS.toNanos( 1 ) / 20;
-        this.syncTaskManager = new SyncTaskManager( this, skipNanos );
+        long skipMillis = TimeUnit.SECONDS.toMillis( 1 ) / 100;
+        this.syncTaskManager = new SyncTaskManager( this );
 
         // Load config first so we can override
         this.config = new ProxyConfig();
@@ -190,34 +187,29 @@ public class ProxProx implements Proxy {
 
         // Tick loop
         float lastTickTime = Float.MIN_NORMAL;
-        Lock tickLock = new ReentrantLock();
-        Condition tickCondition = tickLock.newCondition();
 
         while ( this.running.get() ) {
-            tickLock.lock();
             try {
-                long start = System.nanoTime();
+                long start = System.currentTimeMillis();
 
                 // Tick all major subsystems:
-                long currentMillis = System.currentTimeMillis();
-                this.syncTaskManager.update( currentMillis, lastTickTime );
+                this.syncTaskManager.update( start, lastTickTime );
 
                 this.socketEventListener.update();
                 for ( Map.Entry<UUID, Player> entry : this.players.entrySet() ) {
                     ( (UpstreamConnection) entry.getValue() ).update();
                 }
 
-                long diff = System.nanoTime() - start;
-                if ( diff < skipNanos ) {
-                    tickCondition.await( skipNanos - diff, TimeUnit.NANOSECONDS );
-                    lastTickTime = (float) skipNanos / 1000000000.0F;
+                long diff = System.currentTimeMillis() - start;
+                if ( diff < skipMillis ) {
+                    Thread.sleep( skipMillis - diff );
+
+                    lastTickTime = (float) skipMillis / TimeUnit.SECONDS.toMillis( 1 );
                 } else {
-                    lastTickTime = (float) diff / 1000000000.0F;
+                    lastTickTime = (float) diff / TimeUnit.SECONDS.toMillis( 1 );
                 }
             } catch ( Exception e ) {
                 LOGGER.error( "Exception in main run", e );
-            } finally {
-                tickLock.unlock();
             }
         }
     }

@@ -17,8 +17,8 @@ import lombok.RequiredArgsConstructor;
  */
 @RequiredArgsConstructor
 public class SyncTaskManager {
+
     @Getter private final ProxProx proxProx;
-    @Getter private final long tickLength;
     private final TaskList<SyncScheduledTask> taskList = new TaskList<>();
 
     /**
