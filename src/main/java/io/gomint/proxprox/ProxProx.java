@@ -263,6 +263,9 @@ public class ProxProx implements Proxy {
     public void shutdown() {
         LOGGER.info( "Shutting down..." );
 
+        // Disable plugins first
+        this.pluginManager.shutdown();
+
         // Close for new connections
         this.serverSocket.close();
 
