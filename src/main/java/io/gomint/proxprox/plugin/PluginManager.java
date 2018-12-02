@@ -379,6 +379,16 @@ public class PluginManager implements io.gomint.proxprox.api.plugin.PluginManage
             throw new SecurityException( "Plugins can only disable themselves" );
         }
 
+        this.disablePlugin0(plugin);
+    }
+
+    /**
+     * Disable a specific given plugin. Bypasses the security check
+     * by {@see disablePlugin}
+     *
+     * @param plugin The plugin which should be disabled
+     */
+    private void disablePlugin0( Plugin plugin ) {
         // Check if this plugin is still enabled
         if ( !getPlugins().contains( plugin ) ) {
             return;
@@ -430,8 +440,9 @@ public class PluginManager implements io.gomint.proxprox.api.plugin.PluginManage
      * Disable all currently loaded plugins
      */
     public void shutdown() {
-        for ( Plugin plugin : new ArrayList<>( getPlugins() ) ) {
-            disablePlugin( plugin );
+        for ( Plugin plugin : this.getPlugins() ) {
+            // Bypasses the security check
+            this.disablePlugin0( plugin );
         }
     }
 
