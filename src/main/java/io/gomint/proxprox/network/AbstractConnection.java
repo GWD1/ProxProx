@@ -133,16 +133,21 @@ public abstract class AbstractConnection {
     public abstract void send( Packet packet );
 
     public void close() {
-        if ( this.executor != null ) {
-            ProxProx.instance.getProcessExecutorService().releaseExecutor( this.executor );
-            this.executor = null;
+        if( this.state == ConnectionState.DISCONNECTED ) {
+            LOGGER.debug("Anonymous tried to close a already closed connection");
+            return;
         }
+
+        ProxProx.instance.getProcessExecutorService().releaseExecutor( this.executor );
+        this.executor = null;
+        this.state = ConnectionState.DISCONNECTED;
     }
 
     protected enum ConnectionState {
         HANDSHAKE,
         CONNECTED,
-        ENCRYPTED
+        ENCRYPTED,
+        DISCONNECTED
     }
 
 }
