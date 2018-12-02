@@ -5,6 +5,12 @@ of PE Servers without the need of third party plugins inside them.
 
 The API currently is a bit thin but you can work on the project and contribute to it so we can grow the API together.
 
+## Project
+
+Build Version | Builds
+------------ | -------------|
+Master Build | [Latest Build on Jenkins](ci.gomint.io/job/ProxProx/job/master/)
+
 ## Testing
 
 Currently the project is in testing only mode. There is no "download the jar and run" mode. You need to setup an IDE or
