@@ -828,7 +828,14 @@ public class UpstreamConnection extends AbstractConnection implements Player {
     }
 
     public void flushSendQueue( float dT ) {
+        if( this.connection.isDisconnecting()
+            || !this.connection.isConnected()
+            || this.state == ConnectionState.DISCONNECTED ) {
+            return;
+        }
+
         this.lastUpdate += dT;
+
         if ( 0.05f - this.lastUpdate < 0.0000001f ) {
             if ( !this.packetQueue.isEmpty() ) {
                 List<PacketBuffer> drained = new ArrayList<>();
