@@ -4,9 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>io.gomint</groupId>
-    <artifactId>ProxProx</artifactId>
+    <groupId>io.gomint.proxy</groupId>
+    <artifactId>proxprox</artifactId>
+    <packaging>pom</packaging>
     <version>1.0-SNAPSHOT</version>
+
+    <modules>
+        <module>proxprox-api</module>
+        <module>proxprox-server</module>
+    </modules>
 
     <repositories>
         <repository>
@@ -14,78 +20,14 @@
             <url>https://repo.gomint.io/content/groups/public/</url>
         </repository>
     </repositories>
-    
-    <dependencies>
-        <dependency>
-            <groupId>io.gomint</groupId>
-            <artifactId>gomint-native</artifactId>
-            <version>1.3.0-SNAPSHOT</version>
-        </dependency>
 
+    <dependencies>
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>1.16.0</version>
             <scope>provided</scope>
-        </dependency>
-
-        <!-- Networking -->
-        <dependency>
-            <groupId>io.gomint</groupId>
-            <artifactId>jraknet</artifactId>
-            <version>6.1.3-SNAPSHOT</version>
-        </dependency>
-
-        <!-- Logging -->
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-api</artifactId>
-            <version>1.7.13</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-core</artifactId>
-            <version>2.5</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.logging.log4j</groupId>
-            <artifactId>log4j-slf4j-impl</artifactId>
-            <version>2.5</version>
-        </dependency>
-
-        <!-- Config -->
-        <dependency>
-            <groupId>org.yaml</groupId>
-            <artifactId>snakeyaml</artifactId>
-            <version>1.20</version>
-        </dependency>
-
-        <!-- Guava -->
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>24.0-jre</version>
-        </dependency>
-
-        <!-- JSON Simple -->
-        <dependency>
-            <groupId>com.googlecode.json-simple</groupId>
-            <artifactId>json-simple</artifactId>
-            <version>1.1.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.javassist</groupId>
-            <artifactId>javassist</artifactId>
-            <version>3.20.0-GA</version>
-        </dependency>
-
-        <dependency>
-            <groupId>io.gomint</groupId>
-            <artifactId>taglib</artifactId>
-            <version>1.2.0-SNAPSHOT</version>
         </dependency>
     </dependencies>
 

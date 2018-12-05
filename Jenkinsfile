@@ -14,7 +14,7 @@ pipeline {
     }
     stage('Store') {
       steps {
-        archiveArtifacts 'target/ProxProx.jar'
+        archiveArtifacts 'proxprox-api/target/ProxProx.jar'
       }
     }
   }
