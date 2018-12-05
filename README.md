@@ -1,34 +1,74 @@
-# ProxProx
+![ProxProx](.github/ASSETS/logo_optimized.png)
 
-ProxProx is a Proxy written in pure Java. It allows creating Plugins and moving Players between all sorts
-of PE Servers without the need of third party plugins inside them.
+<h4 align="center">A new fresh Minecraft Bedrock Edition proxy<br>aiming for stability and performance</h4>
+<p align="center">
+  
+  <!-- STAR BADGE -->
+  <a href="https://github.com/GoMint/ProxProx/stargazers">
+    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/GoMint/GoMint.svg">
+  </a>
+  <!-- ISSUES BADGE -->
+  <a href="https://github.com/GoMint/ProxProx/issues">
+    <img alt="GitHub Issues" src="https://img.shields.io/github/issues/GoMint/GoMint.svg">
+  </a>
+  <!-- VERSION BADGE -->
+  <a href="https://github.com/GoMint/ProxProx">
+    <img alt="Version" src="https://img.shields.io/badge/version-0.0.1-green.svg">
+  </a>
+  <!-- LICENSE BADGE -->
+  <a href="https://opensource.org/licenses/BSD-3-Clause">
+    <img alt="License" src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg">
+  </a>
 
-The API currently is a bit thin but you can work on the project and contribute to it so we can grow the API together.
+</p>
 
-## Project
+ProxProx is an open-source proxy for Minecraft Bedrock Edition servers. It allows creating plugins and moving players between all sorts of PE servers without the need of third party plugins. Purely written in Java.
 
-Build Version | Builds
------------- | -------------|
-Master Build | [Latest Build on Jenkins](ci.gomint.io/job/ProxProx/job/master/)
+### A word of warning
+Currently, ProxProx is in a fast development-mode. The API is not that stable and may change over time. The goal is to develop an API with the implementation problems we face. We will eventually break the API multiple times until we reach the first release. To keep the impact minimal we deprecate symbols and provide better alternatives you can use.
 
-## Testing
+```diff
+- Deprecated symbols (packages, fields, methods, classes etc.) will be deleted after two weeks of deprecation
+```
 
-Currently the project is in testing only mode. There is no "download the jar and run" mode. You need to setup an IDE or
-run the build process via Maven.
+## tl;dr
+| JDK  | Documentation | Download                                                    |
+| ---- | ------------- | ----------------------------------------------------------- |
+| 1.8  | Not available | [Latest build](http://ci.gomint.io/job/ProxProx/job/master) |
 
-## License
+### Compilation
+Compiling ProxProx is actually pretty easy. We'll guide you through the compilation step by step and address troubleshooting.
 
-The code found in this repository is licensed under a 3-clause BSD license. See the LICENSE file for further
-details.
+**Prerequisites**<br>
+For compiling ProxProx, you will need some prerequisites:
+- Git
+- Maven
+- JDK 1.8
+ 
+**Compiling**<br>
+This project's choice of build tool is Maven. To compile ProxProx using Maven follow these steps:
+- Open up a terminal
+- Change the working directory to the cloned ProxProx repository
+- Type the following command: `mvn clean install` (You can append `-T 4C` if you've got a decent machine)
+- Let it compile. This will take some time. Grab a drink and relax.
 
-## Documentation
+**Troubleshooting**<br>
+_No compile troubleshooting available._
 
-There currently is no documentation as things are still changing frequently.
+### License
+This project's choice of license is **BSD 3-Clause**. You may find the license file in the project's root directory.
 
-## TODO List 
+<br>
+<p align="center">
+  
+  <!-- DISCORD -->
+  <a href="https://discord.gg/qC4nJVN">
+    <img width="32" alt="Discord Logo" src=".github/ASSETS/logo_discord.png">
+  </a>
+  &nbsp;
+  <!-- TWITTER -->
+  <a href="https://twitter.com/GomintPe">
+    <img width="32" alt="Twitter Logo" src=".github/ASSETS/logo_twitter.png">
+  </a>
 
-* Documentation (JavaDocs) for every piece of Code inside of the api Package
-* Events for Chat
-* Working Playerlist manipulation, currently switching Servers will cause corruption in the List
-* Code cleanup inside of the Down and Upstream Connections (like abstract the read Threads into Executorpools)
-* Better Debug interface, something like Watchdog for CPU, Network Trace for RakNet, both configurable
+</p>
