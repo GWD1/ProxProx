@@ -1,0 +1,2 @@
+2018-12-05 02:14:08.776 [main] INFO  io.gomint.proxprox.ProxProxProxy - Starting ProxProxProxy v1.0.0
+2018-12-05 02:14:10.231 [main] INFO  io.gomint.proxprox.ProxProxProxy - Bound to 0.0.0.0:19132
