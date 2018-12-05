@@ -5,11 +5,11 @@
   
   <!-- STAR BADGE -->
   <a href="https://github.com/GoMint/ProxProx/stargazers">
-    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/GoMint/GoMint.svg">
+    <img alt="GitHub Stars" src="https://img.shields.io/github/stars/GoMint/ProxProx.svg">
   </a>
   <!-- ISSUES BADGE -->
   <a href="https://github.com/GoMint/ProxProx/issues">
-    <img alt="GitHub Issues" src="https://img.shields.io/github/issues/GoMint/GoMint.svg">
+    <img alt="GitHub Issues" src="https://img.shields.io/github/issues/GoMint/ProxProx.svg">
   </a>
   <!-- VERSION BADGE -->
   <a href="https://github.com/GoMint/ProxProx">
