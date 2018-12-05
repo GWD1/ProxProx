@@ -10,6 +10,9 @@ package io.gomint.proxprox;
 import com.google.common.util.concurrent.ListeningScheduledExecutorService;
 import com.google.common.util.concurrent.MoreExecutors;
 import io.gomint.jraknet.ServerSocket;
+import io.gomint.proxprox.api.ChatColor;
+import io.gomint.proxprox.api.ProxProx;
+import io.gomint.proxprox.api.Proxy;
 import io.gomint.proxprox.api.command.ConsoleCommandSender;
 import io.gomint.proxprox.api.config.InvalidConfigurationException;
 import io.gomint.proxprox.api.entity.Player;
@@ -48,10 +51,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ProxProxProxy implements Proxy {
 
-    /**
-     * Only for {@link Proxy#getInstance()}. DO NOT USE IN PLUGINS!
-     */
-    public static ProxProxProxy instance;
+    @Getter
+    private static ProxProxProxy instance;
 
     /**
      * Chat prefix for internal Command usage
@@ -94,7 +95,7 @@ public class ProxProxProxy implements Proxy {
      * @param args optional arguments given via CLI arguments
      */
     public ProxProxProxy(String[] args ) {
-        ProxProxProxy.instance = this;
+        ProxProx.setProxy(this);
 
         LOGGER.info( "Starting ProxProxProxy v1.0.0" );
 

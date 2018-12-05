@@ -1,4 +1,4 @@
-package io.gomint.proxprox.math;
+package io.gomint.proxprox.api.math;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

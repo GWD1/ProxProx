@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.gomint.proxprox.math;
+package io.gomint.proxprox.api.math;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;

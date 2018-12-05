@@ -25,6 +25,6 @@ public interface Task {
      *
      * @param exceptionHandler which should be used to handle Exceptions
      */
-    void onException( ExceptionHandler exceptionHandler );
+    void onException(ExceptionHandler exceptionHandler);
 
 }

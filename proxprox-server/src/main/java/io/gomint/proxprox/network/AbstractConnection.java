@@ -56,7 +56,7 @@ public abstract class AbstractConnection {
      * Setup the internal structures needed for the Connection
      */
     protected void setup() {
-        this.executor = ProxProxProxy.instance.getProcessExecutorService().getExecutor();
+        this.executor = ProxProxProxy.getInstance().getProcessExecutorService().getExecutor();
     }
 
     /**
@@ -132,7 +132,7 @@ public abstract class AbstractConnection {
             return;
         }
 
-        ProxProxProxy.instance.getProcessExecutorService().releaseExecutor(this.executor );
+        ProxProxProxy.getInstance().getProcessExecutorService().releaseExecutor(this.executor );
         this.executor = null;
         this.state = ConnectionState.DISCONNECTED;
     }

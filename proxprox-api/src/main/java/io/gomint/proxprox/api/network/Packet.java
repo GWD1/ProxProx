@@ -8,8 +8,8 @@
 package io.gomint.proxprox.api.network;
 
 import io.gomint.jraknet.PacketBuffer;
-import io.gomint.proxprox.inventory.ItemStack;
-import io.gomint.proxprox.math.BlockPosition;
+import io.gomint.proxprox.api.inventory.ItemStack;
+import io.gomint.proxprox.api.math.BlockPosition;
 import io.gomint.taglib.NBTReader;
 import io.gomint.taglib.NBTTagCompound;
 

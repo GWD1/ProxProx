@@ -8,7 +8,6 @@
 package io.gomint.proxprox.api.event;
 
 import io.gomint.proxprox.api.entity.Player;
-import io.gomint.proxprox.api.plugin.event.CancelableEvent;
 import io.gomint.proxprox.api.plugin.event.Event;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

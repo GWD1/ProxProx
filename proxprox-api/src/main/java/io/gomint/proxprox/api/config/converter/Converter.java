@@ -13,7 +13,7 @@ public interface Converter {
      * @return An Object (mostly a Map or a List)
      * @throws Exception Some generic exception when something went wrong. This gets caught by the converter
      */
-    public Object toConfig( Class<?> type, Object obj, ParameterizedType parameterizedType ) throws Exception;
+    public Object toConfig(Class<?> type, Object obj, ParameterizedType parameterizedType) throws Exception;
 
     /**
      * This method gets called when we want to load something out of the File. You get that what you give into the Config
@@ -25,7 +25,7 @@ public interface Converter {
      * @return The correct Object which can be hold by the Field
      * @throws Exception Some generic exception when something went wrong. This gets caught by the converter
      */
-    public Object fromConfig( Class<?> type, Object obj, ParameterizedType parameterizedType ) throws Exception;
+    public Object fromConfig(Class<?> type, Object obj, ParameterizedType parameterizedType) throws Exception;
 
     /**
      * This checks if this converter can convert the given Class
@@ -33,5 +33,5 @@ public interface Converter {
      * @param type The type (Class) of the Field to check
      * @return true if this can convert that otherwise false
      */
-    public boolean supports( Class<?> type );
+    public boolean supports(Class<?> type);
 }

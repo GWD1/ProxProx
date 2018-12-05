@@ -8,8 +8,8 @@
 package io.gomint.proxprox.network.type.metadata;
 
 import io.gomint.jraknet.PacketBuffer;
-import io.gomint.proxprox.inventory.ItemStack;
-import io.gomint.proxprox.math.Vector;
+import io.gomint.proxprox.api.inventory.ItemStack;
+import io.gomint.proxprox.api.math.Vector;
 import lombok.ToString;
 
 import java.util.HashMap;

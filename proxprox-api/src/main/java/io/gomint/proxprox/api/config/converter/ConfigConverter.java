@@ -1,6 +1,11 @@
 package io.gomint.proxprox.api.config.converter;
 
-import io.gomint.proxprox.api.config.*;
+import io.gomint.proxprox.api.config.BaseConfigMapper;
+import io.gomint.proxprox.api.config.Comment;
+import io.gomint.proxprox.api.config.Comments;
+import io.gomint.proxprox.api.config.ConfigSection;
+import io.gomint.proxprox.api.config.InternalConverter;
+import io.gomint.proxprox.api.config.YamlConfig;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;

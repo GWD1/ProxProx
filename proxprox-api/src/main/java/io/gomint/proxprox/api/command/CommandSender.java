@@ -15,11 +15,11 @@ import java.util.Locale;
  */
 public interface CommandSender {
 
-    void sendMessage( String... messages );
+    void sendMessage(String... messages);
 
     String getName();
 
-    boolean hasPermission( String permission );
+    boolean hasPermission(String permission);
 
     String getColor();
 

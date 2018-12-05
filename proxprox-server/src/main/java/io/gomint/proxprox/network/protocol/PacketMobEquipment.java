@@ -2,7 +2,7 @@ package io.gomint.proxprox.network.protocol;
 
 import io.gomint.jraknet.PacketBuffer;
 import io.gomint.proxprox.api.network.Packet;
-import io.gomint.proxprox.inventory.ItemStack;
+import io.gomint.proxprox.api.inventory.ItemStack;
 import io.gomint.proxprox.network.Protocol;
 import lombok.Data;
 

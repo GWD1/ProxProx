@@ -13,6 +13,6 @@ package io.gomint.proxprox.api.network;
  */
 public interface PacketSender {
 
-    void send( Packet packet );
+    void send(Packet packet);
 
 }

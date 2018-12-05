@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.gomint.proxprox;
+package io.gomint.proxprox.api;
 
 import io.gomint.proxprox.api.entity.Player;
 
@@ -24,7 +24,7 @@ public interface Proxy {
      * @return The current running Proxy Instance
      */
     static Proxy getInstance() {
-        return ProxProx.instance;
+        return ProxProx.getProxy();
     }
 
     /**

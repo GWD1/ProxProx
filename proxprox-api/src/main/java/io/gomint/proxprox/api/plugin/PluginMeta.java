@@ -8,8 +8,6 @@
 package io.gomint.proxprox.api.plugin;
 
 import lombok.Data;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.io.File;
 import java.util.Set;

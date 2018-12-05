@@ -233,7 +233,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
     }
 
     void updateIncoming( Connection connection ) {
-        if ( ProxProxProxy.instance.getConfig().isUseTCP() || connection == null ) {
+        if ( ProxProxProxy.getInstance().getConfig().isUseTCP() || connection == null ) {
             return;
         }
 
@@ -586,7 +586,7 @@ public class DownstreamConnection extends AbstractConnection implements Server, 
 
         if ( ( this.tcpConnection != null || this.connection != null ) && fireEvent ) {
             ServerKickedPlayerEvent serverKickedPlayerEvent = new ServerKickedPlayerEvent( this.upstreamConnection, this );
-            ProxProxProxy.instance.getPluginManager().callEvent(serverKickedPlayerEvent );
+            ProxProxProxy.getInstance().getPluginManager().callEvent(serverKickedPlayerEvent );
         }
 
         this.internalClose( message );

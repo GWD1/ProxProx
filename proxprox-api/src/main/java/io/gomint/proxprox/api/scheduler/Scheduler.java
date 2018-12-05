@@ -22,7 +22,7 @@ public interface Scheduler {
      * @param runnable which should be executed
      * @return the created and scheduled Task
      */
-    Task executeAsync( Runnable runnable );
+    Task executeAsync(Runnable runnable);
 
     /**
      * Executes a runnable with a delay. It blocks the Thread for the time until the delay arrives
@@ -32,7 +32,7 @@ public interface Scheduler {
      * @param timeUnit which should be used to multiply the delay
      * @return the created and scheduled Task
      */
-    Task scheduleAsync( Runnable runnable, long delay, TimeUnit timeUnit );
+    Task scheduleAsync(Runnable runnable, long delay, TimeUnit timeUnit);
 
     /**
      * Executes a runnable with a delay. It blocks the Thread for the time until the delay arrives. After the
@@ -45,7 +45,7 @@ public interface Scheduler {
      * @param timeUnit which should be used to multiply the delay / period
      * @return the created and scheduled Task
      */
-    Task scheduleAsync( Runnable runnable, long delay, long period, TimeUnit timeUnit );
+    Task scheduleAsync(Runnable runnable, long delay, long period, TimeUnit timeUnit);
 
     /**
      * Run the runnable on the next tick
@@ -53,7 +53,7 @@ public interface Scheduler {
      * @param runnable which should be executed
      * @return the created and scheduled Task
      */
-    Task executeSync( Runnable runnable );
+    Task executeSync(Runnable runnable);
 
     /**
      * Executes a runnable with a delay. It gets scheduled and execute against a internal ticker.
@@ -63,7 +63,7 @@ public interface Scheduler {
      * @param timeUnit which should be used to multiply the delay
      * @return the created and scheduled Task
      */
-    Task scheduleSync( Runnable runnable, long delay, TimeUnit timeUnit );
+    Task scheduleSync(Runnable runnable, long delay, TimeUnit timeUnit);
 
     /**
      * Executes a runnable with a delay. It gets scheduled and execute against a internal ticker. After the
@@ -76,6 +76,6 @@ public interface Scheduler {
      * @param timeUnit which should be used to multiply the delay / period
      * @return the created and scheduled Task
      */
-    Task scheduleSync( Runnable runnable, long delay, long period, TimeUnit timeUnit );
+    Task scheduleSync(Runnable runnable, long delay, long period, TimeUnit timeUnit);
     
 }

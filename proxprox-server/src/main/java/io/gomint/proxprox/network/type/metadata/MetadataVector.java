@@ -8,7 +8,7 @@
 package io.gomint.proxprox.network.type.metadata;
 
 import io.gomint.jraknet.PacketBuffer;
-import io.gomint.proxprox.math.Vector;
+import io.gomint.proxprox.api.math.Vector;
 
 /**
  * @author BlackyPaw

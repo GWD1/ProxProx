@@ -7,10 +7,10 @@
 
 package io.gomint.proxprox.api.event;
 
+import io.gomint.proxprox.api.data.ServerDataHolder;
 import io.gomint.proxprox.api.entity.Player;
 import io.gomint.proxprox.api.entity.Server;
 import io.gomint.proxprox.api.plugin.event.Event;
-import io.gomint.proxprox.api.data.ServerDataHolder;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

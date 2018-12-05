@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-package io.gomint.proxprox.inventory;
+package io.gomint.proxprox.api.inventory;
 
 import io.gomint.taglib.NBTTagCompound;
 

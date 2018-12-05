@@ -22,7 +22,7 @@ public interface ExceptionHandler {
      * @param e the thrown Exception
      * @return true when the code should be executed further, false if not
      */
-    boolean onException( Exception e );
+    boolean onException(Exception e);
 
 }
 

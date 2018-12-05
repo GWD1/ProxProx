@@ -7,10 +7,8 @@
 
 package io.gomint.proxprox.api.entity;
 
-import com.google.common.util.concurrent.ListenableFuture;
 import io.gomint.proxprox.api.command.CommandSender;
 
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.Locale;
 import java.util.UUID;
@@ -33,7 +31,7 @@ public interface Player extends CommandSender {
      * @param ip   The ip of the server
      * @param port The port of the server
      */
-    void connect( String ip, int port );
+    void connect(String ip, int port);
 
     boolean isValid();
 
@@ -41,13 +39,13 @@ public interface Player extends CommandSender {
 
     InetSocketAddress getAddress();
 
-    <T> T getMetaData( String key );
-    void setMetaData( String key, Object data );
+    <T> T getMetaData(String key);
+    void setMetaData(String key, Object data);
 
     long getPing();
 
     Locale getLocale();
 
-    void kick( String reason );
+    void kick(String reason);
 
 }

@@ -22,7 +22,7 @@ public interface PluginManager {
      * @param plugin which should be disabled
      * @throws SecurityException when somebody else as the Main Class tries to disable a plugin
      */
-    void disablePlugin( Plugin plugin );
+    void disablePlugin(Plugin plugin);
 
     /**
      * Absolute path of the plugin Directory. This is used to determinate where the data folders of the Plugins
@@ -38,7 +38,7 @@ public interface PluginManager {
      * @param plugin   The plugin which would like to register the listener
      * @param listener The listener which should be registered
      */
-    void registerListener( Plugin plugin, Listener listener );
+    void registerListener(Plugin plugin, Listener listener);
 
-    void registerCommand( Plugin plugin, Command command );
+    void registerCommand(Plugin plugin, Command command);
 }

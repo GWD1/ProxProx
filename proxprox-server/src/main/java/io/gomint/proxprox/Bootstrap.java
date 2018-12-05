@@ -63,7 +63,7 @@ public final class Bootstrap {
 
         // Load the class entry point
         try {
-            Class<?> coreClass = ClassLoader.getSystemClassLoader().loadClass("io.gomint.proxprox.api.ProxProxProxy");
+            Class<?> coreClass = ClassLoader.getSystemClassLoader().loadClass( "io.gomint.proxprox.ProxProxProxy" );
             Constructor constructor = coreClass.getDeclaredConstructor( String[].class );
             constructor.newInstance( new Object[]{ args } );
         } catch ( Exception e ) {

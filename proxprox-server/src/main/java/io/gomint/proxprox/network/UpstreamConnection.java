@@ -22,7 +22,7 @@ import io.gomint.proxprox.api.event.PlayerLoginEvent;
 import io.gomint.proxprox.api.event.PlayerSwitchEvent;
 import io.gomint.proxprox.api.network.Packet;
 import io.gomint.proxprox.debug.Debugger;
-import io.gomint.proxprox.inventory.ItemStack;
+import io.gomint.proxprox.api.inventory.ItemStack;
 import io.gomint.proxprox.jwt.EncryptionRequestForger;
 import io.gomint.proxprox.jwt.JwtAlgorithm;
 import io.gomint.proxprox.jwt.JwtSignatureException;
@@ -802,7 +802,7 @@ public class UpstreamConnection extends AbstractConnection implements Player {
         // Disconnect if needed
         if ( this.disconnect != null && !this.disconnectNotified ) {
             // Delay closing connection so the client has enough time to react
-            ProxProxProxy.instance.getSyncTaskManager().addTask(new SyncScheduledTask(() -> {
+            ProxProxProxy.getInstance().getSyncTaskManager().addTask(new SyncScheduledTask(() -> {
                 UpstreamConnection.this.connection.disconnect( UpstreamConnection.this.disconnect );
             }, 5, -1, TimeUnit.SECONDS ) );
 
