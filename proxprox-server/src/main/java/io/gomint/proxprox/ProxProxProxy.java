@@ -96,6 +96,7 @@ public class ProxProxProxy implements Proxy {
      */
     public ProxProxProxy(String[] args ) {
         ProxProx.setProxy(this);
+        ProxProxProxy.instance = this;
 
         LOGGER.info( "Starting ProxProxProxy v1.0.0" );
 
