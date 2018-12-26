@@ -45,6 +45,18 @@ public class SyncTaskManager {
     }
 
     /**
+     * Kills all remaining tasks that are running
+     */
+    public void killAll() {
+        synchronized ( this.taskList ) {
+            SyncScheduledTask taskToCancel;
+            while( ( taskToCancel = this.taskList.getNextElement() ) != null ) {
+                taskToCancel.cancel();
+            }
+        }
+    }
+
+    /**
      * Update and run all tasks which should be run
      *
      * @param currentMillis     The amount of millis when the update started

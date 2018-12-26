@@ -267,6 +267,10 @@ public class ProxProxProxy implements Proxy {
         // Disable plugins first
         this.pluginManager.shutdown();
 
+        // Shutdown all remaining schedulers which haven't
+        // been killed by the plugin itself
+        this.syncTaskManager.killAll();
+
         // Close for new connections
         this.serverSocket.close();
 
