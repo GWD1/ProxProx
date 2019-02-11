@@ -20,6 +20,7 @@ import java.util.UUID;
 public class PacketResourcePacksInfo extends Packet {
 
     private boolean mustAccept;
+    private boolean hasScripts = false;
     private List<ResourcePack> behaviourPackEntries;
     private List<ResourcePack> resourcePackEntries;
 
@@ -30,6 +31,7 @@ public class PacketResourcePacksInfo extends Packet {
     @Override
     public void serialize( PacketBuffer buffer, int protocolVersion ) {
         buffer.writeBoolean( this.mustAccept );
+        buffer.writeBoolean( this.hasScripts );
 
         buffer.writeLShort( (short) ( this.behaviourPackEntries == null ? 0 : this.behaviourPackEntries.size() ) );
         if ( this.behaviourPackEntries != null ) {
@@ -40,6 +42,7 @@ public class PacketResourcePacksInfo extends Packet {
                 buffer.writeString( "" );
                 buffer.writeString( "" );
                 buffer.writeString( "" );
+                buffer.writeBoolean(false);
             }
         }
 
@@ -52,6 +55,7 @@ public class PacketResourcePacksInfo extends Packet {
                 buffer.writeString( "" );
                 buffer.writeString( "" );
                 buffer.writeString( "" );
+                buffer.writeBoolean(false);
             }
         }
     }
@@ -59,6 +63,7 @@ public class PacketResourcePacksInfo extends Packet {
     @Override
     public void deserialize( PacketBuffer buffer, int protocolVersion ) {
         this.mustAccept = buffer.readBoolean();
+        this.hasScripts = buffer.readBoolean();
 
         short behaviourPackLength = buffer.readLShort();
         if ( behaviourPackLength > 0 ) {
@@ -70,6 +75,7 @@ public class PacketResourcePacksInfo extends Packet {
                 this.behaviourPackEntries.add( pack );
                 buffer.readString();
                 buffer.readString();
+                buffer.readBoolean();
             }
         }
 
@@ -83,6 +89,7 @@ public class PacketResourcePacksInfo extends Packet {
                 this.resourcePackEntries.add( pack );
                 buffer.readString();
                 buffer.readString();
+                buffer.readBoolean();
             }
         }
     }
