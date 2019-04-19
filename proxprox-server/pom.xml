@@ -74,4 +74,8 @@
         </dependency>
     </dependencies>
 
+    <build>
+        <finalName>Proxprox</finalName>
+    </build>
+
 </project>
