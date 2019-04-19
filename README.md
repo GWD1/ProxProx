@@ -34,7 +34,7 @@ Currently, ProxProx is in a fast development-mode. The API is not that stable an
 ## tl;dr
 | JDK  | Documentation | Download                                                    |
 | ---- | ------------- | ----------------------------------------------------------- |
-| 1.8  | Not available | [Latest build](http://ci.gomint.io/job/ProxProx/job/master) |
+| 1.8  | Not available | [Latest build](https://travis-ci.org/GoMint/ProxProx) |
 
 ### Compilation
 Compiling ProxProx is actually pretty easy. We'll guide you through the compilation step by step and address troubleshooting.
